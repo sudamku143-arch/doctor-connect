@@ -8,3 +8,5 @@ export * from "./components/TimeSlotChip";
 export * from "./components/DateStrip";
 export * from "./components/ConfirmationModal";
 export * from "./components/NotificationListItem";
+export * from "./components/QueueCard";
+export * from "./components/StatsCard";

@@ -9,7 +9,7 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (isLoading) return;
-    router.replace(session ? "/dashboard" : "/login");
+    router.replace(session ? "/(tabs)" : "/login");
   }, [isLoading, session]);
 
   return (

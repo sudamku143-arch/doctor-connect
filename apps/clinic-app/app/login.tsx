@@ -33,7 +33,7 @@ export default function ClinicLoginScreen() {
       setFormError("Invalid email or password. Please try again.");
       return;
     }
-    router.replace("/dashboard");
+    router.replace("/(tabs)");
   }
 
   return (

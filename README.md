@@ -59,10 +59,15 @@ in this repo — only the public URL and anon key belong in client apps.
 
 ## Database
 
-The schema lives in `supabase/migrations/0001_init.sql` (initial schema + RLS)
-and `supabase/migrations/0002_phase2.sql` (Phase 2: `doctors.languages`, the
-`doctor_ratings` view, and the `book_appointment`/`cancel_appointment` RPCs).
-Both are applied to the project this repo is currently wired to. To apply
+The schema lives in `supabase/migrations/0001_init.sql` (initial schema + RLS),
+`supabase/migrations/0002_phase2.sql` (Phase 2: `doctors.languages`, the
+`doctor_ratings` view, and the `book_appointment`/`cancel_appointment` RPCs),
+and `supabase/migrations/0003_phase3.sql` (Phase 3: the leave/blocked-slot-
+aware `generate_slots_for_doctor_clinic` generator, the
+`add_doctor_leave`/`add_blocked_slot` RPCs that keep slots in sync, the
+queue/check-in/consultation RPCs, clinic-side cancellation/reschedule, and
+two RLS additions so clinic staff can see their own patients' names). All
+three are applied to the project this repo is currently wired to. To apply
 them to a different Supabase project:
 
 ```bash
@@ -89,6 +94,29 @@ There is no public signup flow for admin/clinic-staff roles by design (see
    through any app's flow).
 2. In the SQL editor, update their `profiles.role` to `'SUPER_ADMIN'`.
 
+### First clinic staff account (for testing Phase 3)
+
+There's no receptionist/clinic-admin signup either — that's the Admin
+Panel's job (Phase 4), which doesn't exist yet. To test the clinic app in the
+meantime:
+
+1. Create a user the same way as above (Auth dashboard, or sign up once
+   through any app).
+2. In the SQL editor:
+   ```sql
+   update profiles set role = 'CLINIC_ADMIN' where id = '<their auth user id>';
+   insert into clinic_staff (profile_id, clinic_id, role)
+   values ('<their auth user id>', '00000000-0000-0000-0000-000000000001', 'CLINIC_ADMIN');
+   ```
+   (`00000000-0000-0000-0000-000000000001` is the seeded demo clinic from
+   `supabase/seed/seed.sql`.)
+3. Log into the clinic app with that account.
+
+Note: the `handle_new_user` trigger also creates a `patients` row for every
+new `auth.users` insert, including this one — harmless but unused for a
+staff account. Worth revisiting once Phase 4 builds real receptionist
+creation.
+
 ## Checks
 
 ```bash
@@ -112,16 +140,39 @@ atomically lock the slot row rather than trusting a client-side check.
 Scope intentionally deferred past Phase 2 (see the Phase 2 plan for the full
 reasoning): distance-based search filter/sort (no geolocation capture yet),
 Add to Calendar and profile-photo upload (both need a new native module for
-UI outside `PROMPT.md` §30's MVP list), and the recurring-schedule-to-slots
-generator with leave/blocked-slot exclusion (a dedicated Phase 5 concern —
-Phase 2 books against manually seeded `appointment_slots` rows instead).
+UI outside `PROMPT.md` §30's MVP list). The recurring-schedule-to-slots
+generator originally slated for Phase 5 was pulled forward and built for real
+in Phase 3 instead (see below).
+
+**Phase 3 complete**: the Clinic/Receptionist App is wired to the same
+Supabase project — Dashboard, Today's Queue, Appointments, Appointment
+Details, Doctor Schedule, Add Availability, Doctor Leave, Block Slot,
+Affected Appointments, Patient Management, Clinic Profile, and Receptionist
+Profile (`PROMPT.md` Screens 2–3, 5–14) all read and write real data.
+`generate_slots_for_doctor_clinic` (`supabase/migrations/0003_phase3.sql`)
+turns a saved weekly schedule into real bookable slots, skipping days/times
+already covered by a doctor leave or blocked slot; marking a leave or
+blocking a slot immediately closes matching future open, unbooked slots
+without ever touching an existing booking — those surface on the Affected
+Appointments screen for a manual Notify/Reschedule/Cancel decision, never a
+silent change. Queue check-in/call-next/complete/no-show and clinic-side
+cancel/reschedule are all RPCs authorized against the caller's own
+`clinic_staff` row, never a raw client table write.
+
+**Explicit, confirmed scope decision overriding `PROMPT.md`'s own listed
+features**: no walk-in patient support. `PROMPT.md` calls for it in §1, §6
+Screen 4, §16, and §30's Clinic MVP list, but the user asked for it to be
+removed entirely — every appointment the clinic app manages was booked
+online through the Patient App. `appointments.booking_source`'s `WALK_IN`
+enum value stays defined (harmless, not worth an enum-drop migration) but
+nothing writes it.
 
 Verified this session: `pnpm typecheck` and `pnpm lint` pass across all 3
 apps + 5 packages; `admin-panel` builds via `next build`; `patient-app` and
 `clinic-app` both bundle successfully via `expo export`; the schema, Phase 2
-migration, and seed data are applied to the live dev Supabase project (no
-on-device/emulator check was possible in this environment — visual
-confirmation of the actual booking flow on a real device or emulator is still
-needed from you).
+and Phase 3 migrations, and seed data are applied to the live dev Supabase
+project (no on-device/emulator check was possible in this environment —
+visual confirmation of the actual booking/queue flow on a real device or
+emulator is still needed from you).
 
 See `docs/ARCHITECTURE.md` for the full phased roadmap.
