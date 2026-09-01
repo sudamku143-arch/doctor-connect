@@ -20,7 +20,7 @@ packages/
   validation/         shared zod schemas
   config/             shared eslint rules
 supabase/
-  migrations/         SQL schema + RLS (not yet applied to any live project)
+  migrations/         SQL schema + RLS (applied to the dev Supabase project)
   seed/               dev-only seed data
 ```
 
@@ -59,8 +59,11 @@ in this repo — only the public URL and anon key belong in client apps.
 
 ## Database
 
-The schema lives in `supabase/migrations/0001_init.sql`. It has **not** been
-applied to any live project yet. To apply it to your own Supabase project:
+The schema lives in `supabase/migrations/0001_init.sql` (initial schema + RLS)
+and `supabase/migrations/0002_phase2.sql` (Phase 2: `doctors.languages`, the
+`doctor_ratings` view, and the `book_appointment`/`cancel_appointment` RPCs).
+Both are applied to the project this repo is currently wired to. To apply
+them to a different Supabase project:
 
 ```bash
 # via the Supabase CLI, from the project root
@@ -68,7 +71,12 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-Dev-only seed data (specialties + a demo clinic/doctor) is in
+...or paste each migration file's contents into that project's SQL Editor, in
+order — the same way they were applied here, since that avoids needing the
+project's DB password in this environment.
+
+Dev-only seed data (specialties, a demo clinic/doctor, and ~14 days of
+bookable `appointment_slots` for that demo doctor) is in
 `supabase/seed/seed.sql` — run it manually against a dev database only, never
 against production.
 
@@ -90,27 +98,30 @@ pnpm lint        # eslint across every app + package
 
 ## Status
 
-**Phase 1 complete and verified**: monorepo scaffold, design system tokens,
-navigation shells, and Supabase-Auth-wired login/signup screens for all three
-apps. No live Supabase project is wired up yet — every screen beyond auth
-uses static placeholder data until Phase 2 (Patient app backend) begins. See
-`docs/ARCHITECTURE.md` for the full phased roadmap.
+**Phase 1 complete**: monorepo scaffold, design system tokens, navigation
+shells, and Supabase-Auth-wired login/signup screens for all three apps.
 
-Verified this session: `pnpm typecheck` and `pnpm lint` pass across all
-3 apps + 5 packages; `admin-panel` builds via `next build`; `patient-app` and
-`clinic-app` both bundle successfully via `expo export` (no on-device/emulator
-check was possible in this environment — visual confirmation on a real device
-or emulator is still needed from you).
+**Phase 2 complete**: the Patient App is wired to a live Supabase project —
+every screen from Search through Profile (`PROMPT.md` Screens 5–18) reads and
+writes real data instead of placeholders. Booking goes straight to
+`CONFIRMED` with no payment gate (Razorpay is Phase 6); double-booking
+prevention is enforced server-side via the `book_appointment`/
+`cancel_appointment` RPCs (`supabase/migrations/0002_phase2.sql`), which
+atomically lock the slot row rather than trusting a client-side check.
 
-One fix worth noting: both Expo apps' `metro.config.js` had
-`resolver.disableHierarchicalLookup = true`, added to stop a sibling
-package's React version from shadowing the app's own — but it actually broke
-resolution of nested transitive deps (e.g. `@expo/metro-runtime`, pulled in
-transitively via `expo-router`), which live inside another package's own
-`node_modules` rather than at the app or workspace root. That's a real bundling
-failure, not a false-positive lint. Removed the override; `expo-doctor` still
-flags one duplicate-`react-native`-instance warning for `packages/ui-native`
-(same version, different pnpm peer-resolution hash for an unrelated peer,
-`@react-native/metro-config`) — confirmed via `expo export` that this does not
-actually break bundling, so it's left as-is rather than forcing exotic pnpm
-overrides for a cosmetic warning.
+Scope intentionally deferred past Phase 2 (see the Phase 2 plan for the full
+reasoning): distance-based search filter/sort (no geolocation capture yet),
+Add to Calendar and profile-photo upload (both need a new native module for
+UI outside `PROMPT.md` §30's MVP list), and the recurring-schedule-to-slots
+generator with leave/blocked-slot exclusion (a dedicated Phase 5 concern —
+Phase 2 books against manually seeded `appointment_slots` rows instead).
+
+Verified this session: `pnpm typecheck` and `pnpm lint` pass across all 3
+apps + 5 packages; `admin-panel` builds via `next build`; `patient-app` and
+`clinic-app` both bundle successfully via `expo export`; the schema, Phase 2
+migration, and seed data are applied to the live dev Supabase project (no
+on-device/emulator check was possible in this environment — visual
+confirmation of the actual booking flow on a real device or emulator is still
+needed from you).
+
+See `docs/ARCHITECTURE.md` for the full phased roadmap.

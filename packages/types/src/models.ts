@@ -53,9 +53,17 @@ export interface Doctor {
   bio: string | null;
   photo_url: string | null;
   experience_years: number;
+  languages: string[];
   verification_status: VerificationStatus;
   created_at: string;
   updated_at: string;
+}
+
+// Mirrors the doctor_ratings view added in 0002_phase2.sql.
+export interface DoctorRating {
+  doctor_id: string;
+  average_rating: number | null;
+  review_count: number;
 }
 
 export interface Specialty {

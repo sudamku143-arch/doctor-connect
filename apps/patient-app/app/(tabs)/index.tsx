@@ -1,15 +1,48 @@
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
 import { theme } from "@doctor-connect/theme";
+import { AppointmentCard, DoctorCard, ErrorState, LoadingState } from "@doctor-connect/ui-native";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { POPULAR_SPECIALTIES } from "@/features/home/specialties";
+import { listSpecialties, type SpecialtyWithCount } from "@/lib/api/specialties";
+import { listTopDoctors } from "@/lib/api/doctors";
+import { listNearbyClinics } from "@/lib/api/clinics";
+import { getNextUpcomingAppointment } from "@/lib/api/appointments";
+import type { AppointmentWithDetails, DoctorListItem } from "@/lib/api/types";
+import { getSpecialtyIcon } from "@/lib/specialtyIcons";
+import { formatDateLabel, formatTimeLabel } from "@/lib/format";
+import type { Clinic } from "@doctor-connect/types";
 
-// Static Phase 1 layout — specialty/doctor cards get promoted to shared
-// packages/ui-native components once Phase 2 defines their real data shape.
 export default function HomeScreen() {
   const { session } = useAuth();
   const firstName = (session?.user.user_metadata?.full_name as string | undefined)?.split(" ")[0];
+
+  const [specialties, setSpecialties] = useState<SpecialtyWithCount[]>([]);
+  const [topDoctors, setTopDoctors] = useState<DoctorListItem[]>([]);
+  const [nearbyClinics, setNearbyClinics] = useState<Clinic[]>([]);
+  const [upcomingAppointment, setUpcomingAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      Promise.all([listSpecialties(), listTopDoctors(5), listNearbyClinics(5), getNextUpcomingAppointment()])
+        .then(([specialtyRows, doctorRows, clinicRows, appointment]) => {
+          setSpecialties(specialtyRows);
+          setTopDoctors(doctorRows);
+          setNearbyClinics(clinicRows);
+          setUpcomingAppointment(appointment);
+        })
+        .catch(() => setError("Something went wrong. Please try again."))
+        .finally(() => setLoading(false));
+    }, []),
+  );
+
+  if (loading) return <LoadingState title="Loading…" />;
+  if (error) return <ErrorState title={error} />;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -21,45 +54,95 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.greeting}>Hi{firstName ? `, ${firstName}` : ""} 👋</Text>
         </View>
-        <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+        <Pressable onPress={() => router.push("/(tabs)/notifications")}>
+          <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+        </Pressable>
       </View>
 
-      <View style={styles.searchBar}>
+      <Pressable style={styles.searchBar} onPress={() => router.push("/(tabs)/search")}>
         <Ionicons name="search" size={18} color={theme.colors.text.tertiary} />
-        <TextInput
-          placeholder="Search doctor, specialty or clinic"
-          placeholderTextColor={theme.colors.text.tertiary}
-          style={styles.searchInput}
-        />
-      </View>
+        <Text style={styles.searchPlaceholder}>Search doctor, specialty or clinic</Text>
+      </Pressable>
 
       <Section title="Popular Specialties">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.specialtyRow}>
-          {POPULAR_SPECIALTIES.map((specialty) => (
-            <View key={specialty.slug} style={styles.specialtyCard}>
+          {specialties.map((specialty) => (
+            <Pressable
+              key={specialty.id}
+              style={styles.specialtyCard}
+              onPress={() => router.push({ pathname: "/doctor-list", params: { specialtyId: specialty.id, specialtyName: specialty.name } })}
+            >
               <View style={styles.specialtyIcon}>
-                <Ionicons name={specialty.icon} size={22} color={theme.colors.primary[600]} />
+                <Ionicons name={getSpecialtyIcon(specialty.icon)} size={22} color={theme.colors.primary[600]} />
               </View>
               <Text style={styles.specialtyName}>{specialty.name}</Text>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       </Section>
 
+      {upcomingAppointment ? (
+        <Section title="Upcoming Appointment">
+          <AppointmentCard
+            doctorName={upcomingAppointment.doctor.full_name}
+            clinicName={upcomingAppointment.clinic.name}
+            dateLabel={formatDateLabel(upcomingAppointment.appointment_date)}
+            timeLabel={formatTimeLabel(upcomingAppointment.appointment_time)}
+            tokenNumber={upcomingAppointment.token_number}
+            status={upcomingAppointment.status}
+            onPress={() => router.push(`/appointment/${upcomingAppointment.id}`)}
+          />
+        </Section>
+      ) : null}
+
       <Section title="Top Doctors Near You">
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No doctors to show yet</Text>
-          <Text style={styles.emptyDescription}>
-            Verified doctors near you will appear here once the doctor directory is connected.
-          </Text>
-        </View>
+        {topDoctors.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No doctors to show yet</Text>
+            <Text style={styles.emptyDescription}>Verified doctors near you will appear here.</Text>
+          </View>
+        ) : (
+          topDoctors.map((item) => (
+            <DoctorCard
+              key={item.doctorClinicId}
+              photoUrl={item.doctor.photo_url}
+              name={item.doctor.full_name}
+              verified={item.doctor.verification_status === "VERIFIED"}
+              qualification={item.doctor.qualification}
+              specialtyNames={item.specialties.map((s) => s.name)}
+              experienceYears={item.doctor.experience_years}
+              averageRating={item.averageRating}
+              reviewCount={item.reviewCount}
+              clinicName={item.clinic.name}
+              consultationFee={item.consultationFee}
+              nextAvailableLabel={
+                item.nextAvailable
+                  ? `${formatDateLabel(item.nextAvailable.date)}, ${formatTimeLabel(item.nextAvailable.startTime)}`
+                  : null
+              }
+              onViewProfile={() => router.push(`/doctor/${item.doctorClinicId}`)}
+              onBook={() => router.push({ pathname: "/(booking)/select-time", params: { doctorClinicId: item.doctorClinicId } })}
+            />
+          ))
+        )}
       </Section>
 
       <Section title="Nearby Clinics">
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No clinics to show yet</Text>
-          <Text style={styles.emptyDescription}>Nearby verified clinics will appear here.</Text>
-        </View>
+        {nearbyClinics.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No clinics to show yet</Text>
+            <Text style={styles.emptyDescription}>Nearby verified clinics will appear here.</Text>
+          </View>
+        ) : (
+          nearbyClinics.map((clinic) => (
+            <View key={clinic.id} style={styles.clinicCard}>
+              <Text style={styles.clinicName}>{clinic.name}</Text>
+              <Text style={styles.clinicAddress}>
+                {clinic.address}, {clinic.city}
+              </Text>
+            </View>
+          ))
+        )}
       </Section>
     </ScrollView>
   );
@@ -114,10 +197,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.default,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
     fontSize: theme.fontSize.base,
-    color: theme.colors.text.primary,
+    color: theme.colors.text.tertiary,
   },
   section: {
     gap: theme.spacing.sm,
@@ -162,6 +245,23 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   emptyDescription: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+  },
+  clinicCard: {
+    padding: theme.spacing.md,
+    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.surface.default,
+    borderWidth: 1,
+    borderColor: theme.colors.border.subtle,
+    gap: 2,
+  },
+  clinicName: {
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text.primary,
+  },
+  clinicAddress: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
   },

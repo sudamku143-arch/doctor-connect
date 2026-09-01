@@ -5,7 +5,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@doctor-connect/theme": "workspace:*"
+    "@doctor-connect/theme": "workspace:*",
+    "@doctor-connect/types": "workspace:*",
+    "@expo/vector-icons": "^15.0.0"
   },
   "peerDependencies": {
     "react": "19.2.3",
