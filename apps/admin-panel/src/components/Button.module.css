@@ -1,0 +1,35 @@
+.base {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.base:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.base:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.primary {
+  background: var(--color-primary-500);
+  color: var(--color-neutral-0);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--color-neutral-300);
+}
+
+.danger {
+  background: var(--color-error-500);
+  color: var(--color-neutral-0);
+}

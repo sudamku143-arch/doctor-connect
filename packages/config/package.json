@@ -1,0 +1,9 @@
+{
+  "name": "@doctor-connect/config",
+  "private": true,
+  "version": "0.1.0",
+  "main": "eslint-base.cjs",
+  "files": [
+    "eslint-base.cjs"
+  ]
+}

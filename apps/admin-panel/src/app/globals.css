@@ -1,0 +1,81 @@
+/* Values mirror packages/theme/src — kept in sync by hand since CSS can't
+   import the TS tokens directly. Light-only: the spec calls for a calm,
+   consistent premium look, not a dark-mode variant, in V1. */
+:root {
+  --color-primary-50: #f4f2ff;
+  --color-primary-100: #eae5ff;
+  --color-primary-500: #7c4dff;
+  --color-primary-600: #6c3ce6;
+  --color-primary-700: #5a2fc2;
+
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f8f8fb;
+  --color-neutral-100: #f1f1f6;
+  --color-neutral-200: #e4e4ec;
+  --color-neutral-300: #d1d1dc;
+  --color-neutral-500: #7c7c91;
+  --color-neutral-600: #5b5b70;
+  --color-neutral-900: #15151f;
+
+  --color-success-500: #16a34a;
+  --color-warning-500: #d97706;
+  --color-error-500: #dc2626;
+  --color-info-500: #2563eb;
+
+  --background: var(--color-neutral-50);
+  --surface: var(--color-neutral-0);
+  --border: var(--color-neutral-200);
+  --text-primary: var(--color-neutral-900);
+  --text-secondary: var(--color-neutral-600);
+  --text-tertiary: var(--color-neutral-500);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-sm: 0 1px 3px rgba(21, 21, 31, 0.06);
+  --shadow-md: 0 4px 12px rgba(21, 21, 31, 0.08);
+  --shadow-lg: 0 12px 24px rgba(21, 21, 31, 0.1);
+
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100%;
+  color: var(--text-primary);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
