@@ -62,13 +62,19 @@ in this repo — only the public URL and anon key belong in client apps.
 The schema lives in `supabase/migrations/0001_init.sql` (initial schema + RLS),
 `supabase/migrations/0002_phase2.sql` (Phase 2: `doctors.languages`, the
 `doctor_ratings` view, and the `book_appointment`/`cancel_appointment` RPCs),
-and `supabase/migrations/0003_phase3.sql` (Phase 3: the leave/blocked-slot-
+`supabase/migrations/0003_phase3.sql` (Phase 3: the leave/blocked-slot-
 aware `generate_slots_for_doctor_clinic` generator, the
 `add_doctor_leave`/`add_blocked_slot` RPCs that keep slots in sync, the
 queue/check-in/consultation RPCs, clinic-side cancellation/reschedule, and
-two RLS additions so clinic staff can see their own patients' names). All
-three are applied to the project this repo is currently wired to. To apply
-them to a different Supabase project:
+two RLS additions so clinic staff can see their own patients' names), and
+`supabase/migrations/0004_phase4.sql` (Phase 4: super-admin write policies
+for doctors/clinics/clinic_staff/reviews — none had an admin write path
+before; a tightened `reviews_owner_write` that only allows reviewing a
+`COMPLETED` appointment; `cancel_appointment_by_clinic`/
+`request_reschedule_by_clinic` widened to also allow a super admin; the
+`create_admin_notification` RPC; and the new `SYSTEM_MESSAGE` notification
+type). All four are applied to the project this repo is currently wired to.
+To apply them to a different Supabase project:
 
 ```bash
 # via the Supabase CLI, from the project root
@@ -94,14 +100,18 @@ There is no public signup flow for admin/clinic-staff roles by design (see
    through any app's flow).
 2. In the SQL editor, update their `profiles.role` to `'SUPER_ADMIN'`.
 
-### First clinic staff account (for testing Phase 3)
+### First clinic staff account
 
-There's no receptionist/clinic-admin signup either — that's the Admin
-Panel's job (Phase 4), which doesn't exist yet. To test the clinic app in the
-meantime:
+There's still no receptionist/clinic-admin *signup* — the Admin Panel's
+Receptionists section (Phase 4) can only assign an **already-registered**
+user as staff (it needs the Supabase service-role key to create a brand-new
+login, which isn't configured in this environment — see Settings in the
+admin panel). So the very first clinic staff account still needs the manual
+SQL step below; after that, promoting further staff can be done from the
+Admin Panel itself (Receptionists → Assign Staff, by the user's email).
 
-1. Create a user the same way as above (Auth dashboard, or sign up once
-   through any app).
+1. Create a user the same way as the Super Admin above (Auth dashboard, or
+   sign up once through any app).
 2. In the SQL editor:
    ```sql
    update profiles set role = 'CLINIC_ADMIN' where id = '<their auth user id>';
@@ -113,9 +123,9 @@ meantime:
 3. Log into the clinic app with that account.
 
 Note: the `handle_new_user` trigger also creates a `patients` row for every
-new `auth.users` insert, including this one — harmless but unused for a
-staff account. Worth revisiting once Phase 4 builds real receptionist
-creation.
+new `auth.users` insert, including staff accounts — harmless but unused.
+Revisit once/if the service-role key is wired up and receptionist creation
+stops going through the patient-signup trigger path.
 
 ## Checks
 
@@ -167,12 +177,41 @@ online through the Patient App. `appointments.booking_source`'s `WALK_IN`
 enum value stays defined (harmless, not worth an enum-drop migration) but
 nothing writes it.
 
+**Phase 4 complete**: the Admin Panel is wired to the same Supabase project —
+Dashboard (real stats + `recharts` charts), Doctors, Clinics, Receptionists,
+Patients, Appointments, Payments, Reviews, Notifications, Reports, and
+Settings (`PROMPT.md` §7) all read and write real data. Since there's no
+Doctor app and no clinic self-registration anywhere in the platform, the
+Admin Panel is also where doctors and clinics actually get created (Add
+Doctor / Add Clinic), not just verified — the literal screen spec assumes
+they already exist. `app/(dashboard)/layout.tsx` also got a real auth guard
+for the first time (`proxy.ts` — Next.js 16 renamed `middleware.ts`, see
+`node_modules/next/dist/docs`); before Phase 4, any authenticated user, not
+just a Super Admin, could reach `/dashboard`.
+
+**Confirmed, scoped-down capability**: creating a brand-new receptionist
+*login* and suspending/banning a patient or staff *login* both need the
+Supabase service-role key, and the user chose to skip sharing it this phase.
+Receptionist Management instead assigns an already-registered user (found by
+email) to a clinic, changes their role, and toggles `clinic_staff.is_active`
+(a real access cutoff — `is_clinic_staff()` checks it — just not an
+auth-level ban). Patient account suspension is dropped from this phase
+entirely; both are documented in Settings and revisitable once the key is
+available.
+
+**Patient App addition**: a small "Leave a Review" action on a `COMPLETED`
+appointment (rating + comment) — Phase 2 never built review submission (not
+in the Patient MVP list), so without this the Admin Reviews screen would
+have nothing to moderate. `reviews_owner_write` was also tightened
+(`0004_phase4.sql`) to actually enforce "only completed appointments may be
+reviewed," which was previously unenforced server-side.
+
 Verified this session: `pnpm typecheck` and `pnpm lint` pass across all 3
-apps + 5 packages; `admin-panel` builds via `next build`; `patient-app` and
-`clinic-app` both bundle successfully via `expo export`; the schema, Phase 2
-and Phase 3 migrations, and seed data are applied to the live dev Supabase
-project (no on-device/emulator check was possible in this environment —
-visual confirmation of the actual booking/queue flow on a real device or
-emulator is still needed from you).
+apps + 5 packages; `admin-panel` builds via `next build` (all 19 routes);
+`patient-app` and `clinic-app` both bundle successfully via `expo export`;
+the schema and all four migrations, plus seed data, are applied to the live
+dev Supabase project (no on-device/emulator or browser check was possible in
+this environment — visual confirmation of the actual admin flows, and the
+patient-app review flow, on a real device/browser is still needed from you).
 
 See `docs/ARCHITECTURE.md` for the full phased roadmap.

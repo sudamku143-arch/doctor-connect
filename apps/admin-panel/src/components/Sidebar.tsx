@@ -6,16 +6,16 @@ import styles from "./Sidebar.module.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", enabled: true },
-  { label: "Doctors", href: "/doctors", enabled: false },
-  { label: "Clinics", href: "/clinics", enabled: false },
-  { label: "Receptionists", href: "/receptionists", enabled: false },
-  { label: "Patients", href: "/patients", enabled: false },
-  { label: "Appointments", href: "/appointments", enabled: false },
-  { label: "Payments", href: "/payments", enabled: false },
-  { label: "Reviews", href: "/reviews", enabled: false },
-  { label: "Notifications", href: "/notifications", enabled: false },
-  { label: "Reports", href: "/reports", enabled: false },
-  { label: "Settings", href: "/settings", enabled: false },
+  { label: "Doctors", href: "/doctors", enabled: true },
+  { label: "Clinics", href: "/clinics", enabled: true },
+  { label: "Receptionists", href: "/receptionists", enabled: true },
+  { label: "Patients", href: "/patients", enabled: true },
+  { label: "Appointments", href: "/appointments", enabled: true },
+  { label: "Payments", href: "/payments", enabled: true },
+  { label: "Reviews", href: "/reviews", enabled: true },
+  { label: "Notifications", href: "/notifications", enabled: true },
+  { label: "Reports", href: "/reports", enabled: true },
+  { label: "Settings", href: "/settings", enabled: true },
 ];
 
 export function Sidebar() {

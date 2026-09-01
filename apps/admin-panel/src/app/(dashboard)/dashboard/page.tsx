@@ -1,19 +1,34 @@
+import Link from "next/link";
+import { AppointmentStatusBadge } from "@/components/Badge";
 import { Card } from "@/components/Card";
 import { StatCard } from "@/components/StatCard";
-import styles from "./page.module.css";
+import { Table } from "@/components/Table";
+import {
+  getAppointmentsByDay,
+  getBookingsByDay,
+  getClinicGrowthByMonth,
+  getDashboardStats,
+  getDoctorGrowthByMonth,
+  getNewPatientsByMonth,
+  getRecentAppointments,
+  getRevenueByDay,
+} from "@/lib/api/dashboard";
+import { Charts } from "./Charts";
+import styles from "../shared.module.css";
 
-// Static placeholders for Phase 1 — live queries land in Phase 4
-// (Admin Panel backend wiring), per docs/ARCHITECTURE.md.
-const STATS = [
-  { label: "Total Doctors", value: "—" },
-  { label: "Total Clinics", value: "—" },
-  { label: "Total Patients", value: "—" },
-  { label: "Today's Appointments", value: "—" },
-  { label: "Total Bookings", value: "—" },
-  { label: "Total Revenue", value: "—" },
-];
+export default async function DashboardPage() {
+  const [stats, appointmentsByDay, bookingsByDay, revenueByDay, newPatientsByMonth, doctorGrowthByMonth, clinicGrowthByMonth, recent] =
+    await Promise.all([
+      getDashboardStats(),
+      getAppointmentsByDay(),
+      getBookingsByDay(),
+      getRevenueByDay(),
+      getNewPatientsByMonth(),
+      getDoctorGrowthByMonth(),
+      getClinicGrowthByMonth(),
+      getRecentAppointments(),
+    ]);
 
-export default function DashboardPage() {
   return (
     <>
       <header>
@@ -21,15 +36,48 @@ export default function DashboardPage() {
         <p className={styles.subtitle}>Overview across all clinics</p>
       </header>
 
-      <section className={styles.statsGrid}>
-        {STATS.map((stat) => (
-          <StatCard key={stat.label} label={stat.label} value={stat.value} />
-        ))}
+      <section className={styles.filterRow}>
+        <StatCard label="Total Doctors" value={String(stats.totalDoctors)} />
+        <StatCard label="Total Clinics" value={String(stats.totalClinics)} />
+        <StatCard label="Total Patients" value={String(stats.totalPatients)} />
+        <StatCard label="Today's Appointments" value={String(stats.todaysAppointments)} />
+        <StatCard label="Total Bookings" value={String(stats.totalBookings)} />
+        <StatCard label="Total Revenue" value={`₹${stats.totalRevenue}`} />
       </section>
+
+      <Charts
+        appointmentsByDay={appointmentsByDay}
+        bookingsByDay={bookingsByDay}
+        revenueByDay={revenueByDay}
+        newPatientsByMonth={newPatientsByMonth}
+        doctorGrowthByMonth={doctorGrowthByMonth}
+        clinicGrowthByMonth={clinicGrowthByMonth}
+      />
 
       <Card>
         <h2 className={styles.sectionTitle}>Recent appointments</h2>
-        <p className={styles.emptyText}>No appointments yet.</p>
+        <Table
+          headers={["Patient", "Doctor", "Clinic", "Date", "Status", ""]}
+          isEmpty={recent.length === 0}
+          emptyMessage="No appointments yet."
+        >
+          {recent.map((appointment) => (
+            <tr key={appointment.id}>
+              <td>{appointment.patient?.profile?.full_name ?? "—"}</td>
+              <td>{appointment.doctor.full_name}</td>
+              <td>{appointment.clinic.name}</td>
+              <td>
+                {appointment.appointment_date} {appointment.appointment_time}
+              </td>
+              <td>
+                <AppointmentStatusBadge status={appointment.status} />
+              </td>
+              <td>
+                <Link href={`/appointments/${appointment.id}`}>View</Link>
+              </td>
+            </tr>
+          ))}
+        </Table>
       </Card>
     </>
   );

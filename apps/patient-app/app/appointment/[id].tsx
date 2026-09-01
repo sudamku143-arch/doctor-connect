@@ -1,18 +1,22 @@
 import { useCallback, useState } from "react";
-import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@doctor-connect/theme";
 import {
   Button,
   ConfirmationModal,
   ErrorState,
   LoadingState,
+  PrimaryButton,
   SecondaryButton,
   StatusBadge,
+  TextField,
 } from "@doctor-connect/ui-native";
 import { cancelAppointment, getAppointmentDetails } from "@/lib/api/appointments";
 import { getDoctorClinicId } from "@/lib/api/doctors";
 import { getQueueSnapshot, type QueueSnapshot } from "@/lib/api/queue";
+import { hasReviewed, submitReview } from "@/lib/api/reviews";
 import type { AppointmentWithDetails } from "@/lib/api/types";
 import { formatDateLabel, formatTimeLabel, getDirectionsUrl, getPhoneUrl } from "@/lib/format";
 
@@ -29,6 +33,13 @@ export default function AppointmentDetailsScreen() {
   const [confirmAction, setConfirmAction] = useState<"cancel" | "reschedule" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [reviewed, setReviewed] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
   const load = useCallback(() => {
     if (!id) return;
     setLoading(true);
@@ -37,6 +48,9 @@ export default function AppointmentDetailsScreen() {
         setAppointment(data);
         if (data && QUEUE_VISIBLE_STATUSES.includes(data.status)) {
           setQueueSnapshot(await getQueueSnapshot(data.id));
+        }
+        if (data && data.status === "COMPLETED") {
+          setReviewed(await hasReviewed(data.id));
         }
       })
       .catch(() => setError("Something went wrong. Please try again."))
@@ -66,6 +80,25 @@ export default function AppointmentDetailsScreen() {
       setActionError("Could not cancel this appointment. Please try again.");
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function handleSubmitReview() {
+    setReviewSubmitting(true);
+    setReviewError(null);
+    try {
+      await submitReview({
+        appointmentId: appointment!.id,
+        doctorId: appointment!.doctor_id,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      setReviewed(true);
+      setShowReviewForm(false);
+    } catch {
+      setReviewError("Could not submit your review. Please try again.");
+    } finally {
+      setReviewSubmitting(false);
     }
   }
 
@@ -111,6 +144,37 @@ export default function AppointmentDetailsScreen() {
             This is an estimate only, based on patients waiting ahead of you.
           </Text>
           <SecondaryButton label="View Live Queue" onPress={() => router.push(`/queue/${appointment.id}`)} />
+        </View>
+      ) : null}
+
+      {appointment.status === "COMPLETED" && !reviewed ? (
+        <View style={styles.card}>
+          {showReviewForm ? (
+            <>
+              <Text style={styles.reviewLabel}>Rate your visit</Text>
+              <View style={styles.starRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable key={star} onPress={() => setReviewRating(star)}>
+                    <Ionicons
+                      name={star <= reviewRating ? "star" : "star-outline"}
+                      size={28}
+                      color={theme.colors.warning[500]}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+              <TextField
+                label="Comment (optional)"
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                multiline
+              />
+              {reviewError ? <Text style={styles.error}>{reviewError}</Text> : null}
+              <PrimaryButton label="Submit Review" onPress={handleSubmitReview} loading={reviewSubmitting} />
+            </>
+          ) : (
+            <SecondaryButton label="Leave a Review" onPress={() => setShowReviewForm(true)} />
+          )}
         </View>
       ) : null}
 
@@ -219,6 +283,15 @@ const styles = StyleSheet.create({
   estimateNote: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.text.tertiary,
+  },
+  reviewLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text.primary,
+  },
+  starRow: {
+    flexDirection: "row",
+    gap: theme.spacing.xxs,
   },
   actions: {
     gap: theme.spacing.sm,

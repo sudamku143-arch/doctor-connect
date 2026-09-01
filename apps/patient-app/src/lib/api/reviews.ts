@@ -19,3 +19,43 @@ export async function listDoctorReviews(doctorId: string): Promise<DoctorReview[
   if (error) throw error;
   return data ?? [];
 }
+
+export async function hasReviewed(appointmentId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("appointment_id", appointmentId)
+    .maybeSingle<{ id: string }>();
+  if (error) throw error;
+  return data != null;
+}
+
+export async function submitReview(input: {
+  appointmentId: string;
+  doctorId: string;
+  rating: number;
+  comment?: string;
+}): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const { data: patient, error: patientError } = await supabase
+    .from("patients")
+    .select("id")
+    .eq("profile_id", user.id)
+    .single<{ id: string }>();
+  if (patientError) throw patientError;
+
+  // reviews_owner_write RLS (0004_phase4.sql) also enforces that the
+  // appointment is COMPLETED and owned by this patient server-side.
+  const { error } = await supabase.from("reviews").insert({
+    appointment_id: input.appointmentId,
+    patient_id: patient.id,
+    doctor_id: input.doctorId,
+    rating: input.rating,
+    comment: input.comment ?? null,
+  });
+  if (error) throw error;
+}

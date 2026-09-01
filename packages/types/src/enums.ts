@@ -79,6 +79,7 @@ export const NotificationType = {
   CANCELLATION: "CANCELLATION",
   QUEUE_UPDATE: "QUEUE_UPDATE",
   CLINIC_MESSAGE: "CLINIC_MESSAGE",
+  SYSTEM_MESSAGE: "SYSTEM_MESSAGE",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 
