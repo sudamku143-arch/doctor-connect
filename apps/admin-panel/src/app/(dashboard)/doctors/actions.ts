@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { VerificationStatus } from "@doctor-connect/types";
 import { requireSuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 
 export interface ActionState {
   error?: string;
@@ -65,6 +66,7 @@ export async function setVerificationStatusAction(doctorId: string, status: Veri
   const { supabase } = await requireSuperAdmin();
   const { error } = await supabase.from("doctors").update({ verification_status: status }).eq("id", doctorId);
   if (error) throw error;
+  await logAdminAction(supabase, "SET_VERIFICATION_STATUS", "doctor", doctorId, undefined, { verification_status: status });
   revalidatePath(`/doctors/${doctorId}`);
   revalidatePath("/doctors");
 }

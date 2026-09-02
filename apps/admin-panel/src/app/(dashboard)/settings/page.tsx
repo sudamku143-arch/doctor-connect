@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "@/components/Card";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "./LogoutButton";
@@ -35,6 +36,10 @@ export default async function SettingsPage() {
           server-only <code>SUPABASE_SERVICE_ROLE_KEY</code> env var (never <code>NEXT_PUBLIC_</code>) to enable those
           later.
         </p>
+      </Card>
+
+      <Card>
+        <Link href="/settings/audit-log">View Audit Log →</Link>
       </Card>
 
       <LogoutButton />

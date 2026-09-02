@@ -87,6 +87,52 @@ All tables use UUID PKs, `created_at`/`updated_at` timestamps, FKs with indexes 
 - Mutations with business rules (booking, status transitions, check-in) go through Postgres RPC functions / Edge Functions — never raw client-side table UPDATEs — so rules are enforced server-side regardless of what the frontend sends (§13, §14).
 - RLS is enabled from the first migration (not left open "for now") — baseline policies ship in Phase 1's schema migration; they get hardened/audited in Phase 7 per the roadmap.
 
+### Phase 7 audit findings
+
+- **Fixed, critical**: `cancel_appointment`'s ownership check used a direct
+  `<>` comparison against a value that's `NULL` for any non-patient caller
+  (any clinic-staff/super-admin session, or an anonymous request) — SQL's
+  `NULL` comparisons are themselves `NULL`, and PL/pgSQL's `IF NULL THEN`
+  is treated as false, so the exception never fired and the function
+  cancelled the appointment anyway. Every other RPC avoided this because
+  `is_clinic_staff()`/`is_super_admin()` are `exists(...)`-based and always
+  return a real `true`/`false`. Fixed in `0005_phase7.sql` with an explicit
+  `is null` guard, matching the pattern `book_appointment` already used
+  correctly.
+- **Fixed, hardening**: Postgres grants `EXECUTE` on new functions to
+  `PUBLIC` by default (unlike tables) — every RPC had only ever been
+  explicitly granted to `authenticated`, with the `PUBLIC` default never
+  revoked. `0005_phase7.sql` revokes it from every mutation RPC, and
+  revokes-then-re-grants it explicitly (`authenticated, anon`) on
+  `is_clinic_staff`/`is_super_admin`, since those two are referenced inside
+  RLS policy bodies and still need to resolve for an anonymous read of a
+  protected table (to correctly return zero rows rather than error).
+- **Fixed, least-privilege**: `patients_modify_own` and `notifications_owner`
+  were both `for all`, letting a client delete their own patient record or
+  insert/delete arbitrary rows in their own notification history — neither
+  is used anywhere in the apps. Split into narrower insert/update-only
+  policies.
+- **Fixed, previously inert**: `audit_logs` has existed since Phase 1 with
+  an enabled RLS policy but nothing ever wrote to it. `log_admin_action`
+  (Phase 7) is now called from the Admin Panel's access/status-changing
+  Server Actions (verification, staff role/active, cancel/reschedule,
+  review hide/restore, notification sends) — viewable at
+  `/settings/audit-log`.
+- **Documented, not built — rate limiting** (§14): Supabase Auth already
+  rate-limits its own endpoints (login/signup/OTP) by default; that's the
+  current real posture. Per-RPC rate limiting needs a request path a custom
+  server controls, which is what Render is for (§6) — nothing like that
+  exists yet, so there's no honest place to add it before then.
+- **Documented, not built — storage bucket policies**: no Supabase Storage
+  bucket exists yet; no photo-upload UI was built in any phase (Phase 2 and
+  4 both explicitly deferred it, per their own plans). Nothing to secure
+  until upload is actually built.
+- **Documented, not built — `specialties` admin write**: there's no RLS
+  write policy (and so no way to add a specialty beyond raw SQL) — a
+  missing feature, not a vulnerability. Adding the policy without a UI to
+  use it would repeat the "inert screen" mistake Phase 3 avoided for the
+  slot generator, so it's left as a known, explicit gap rather than half-built.
+
 ---
 
 ## 4. Appointment / Slot / Queue Architecture

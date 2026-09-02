@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { VerificationStatus } from "@doctor-connect/types";
 import { requireSuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 import type { ActionState } from "../doctors/actions";
 
 export async function createClinicAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -52,6 +53,7 @@ export async function setClinicVerificationStatusAction(clinicId: string, status
   const { supabase } = await requireSuperAdmin();
   const { error } = await supabase.from("clinics").update({ verification_status: status }).eq("id", clinicId);
   if (error) throw error;
+  await logAdminAction(supabase, "SET_VERIFICATION_STATUS", "clinic", clinicId, undefined, { verification_status: status });
   revalidatePath(`/clinics/${clinicId}`);
   revalidatePath("/clinics");
 }

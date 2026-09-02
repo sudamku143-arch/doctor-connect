@@ -73,8 +73,13 @@ before; a tightened `reviews_owner_write` that only allows reviewing a
 `COMPLETED` appointment; `cancel_appointment_by_clinic`/
 `request_reschedule_by_clinic` widened to also allow a super admin; the
 `create_admin_notification` RPC; and the new `SYSTEM_MESSAGE` notification
-type). All four are applied to the project this repo is currently wired to.
-To apply them to a different Supabase project:
+type), and `supabase/migrations/0005_phase7.sql` (Phase 7: a critical fix to
+`cancel_appointment`'s ownership check, `PUBLIC`-execute revoked from every
+RPC, two RLS policies tightened to drop unused delete/insert capability, and
+the `log_admin_action` RPC that makes `audit_logs` functional for the first
+time — see the "Phase 7 audit findings" section of `docs/ARCHITECTURE.md`
+for the full writeup). All five are applied to the project this repo is
+currently wired to. To apply them to a different Supabase project:
 
 ```bash
 # via the Supabase CLI, from the project root
@@ -206,10 +211,33 @@ have nothing to moderate. `reviews_owner_write` was also tightened
 (`0004_phase4.sql`) to actually enforce "only completed appointments may be
 reviewed," which was previously unenforced server-side.
 
+**Phase 6 (Razorpay) is on hold** — no Razorpay account set up yet — and
+will be picked up once one exists. Skipped ahead to Phase 7.
+
+**Phase 7 complete**: a full security/RLS audit against `PROMPT.md` §14's
+checklist. Found and fixed one critical, concretely exploitable bug — see
+`docs/ARCHITECTURE.md`'s "Phase 7 audit findings" for the complete
+writeup, but in short: `cancel_appointment` let any already-authenticated
+non-patient session (which includes every clinic-staff and super-admin
+account in this project) cancel any patient's appointment, due to a `NULL`-
+comparison bug in its ownership check. Also revoked the `PUBLIC`-execute
+default Postgres grants to every function on creation (unlike tables),
+tightened two overly-broad RLS policies, and wired up `audit_logs` (which
+had existed since Phase 1 with nothing ever writing to it) into the Admin
+Panel's access/status-changing actions, viewable at `/settings/audit-log`.
+Rate limiting and storage-bucket policies are documented as intentionally
+not built yet (no custom backend server or file upload exists to secure),
+rather than stubbed.
+
+Also fixed as housekeeping found during the audit: `apps/clinic-app` and
+`apps/admin-panel` never had their own `.env.local` (only `patient-app`'s
+was created, back in Phase 2) — both apps were never actually runnable
+locally in this environment until now.
+
 Verified this session: `pnpm typecheck` and `pnpm lint` pass across all 3
-apps + 5 packages; `admin-panel` builds via `next build` (all 19 routes);
+apps + 5 packages; `admin-panel` builds via `next build` (all 21 routes);
 `patient-app` and `clinic-app` both bundle successfully via `expo export`;
-the schema and all four migrations, plus seed data, are applied to the live
+the schema and all five migrations, plus seed data, are applied to the live
 dev Supabase project (no on-device/emulator or browser check was possible in
 this environment — visual confirmation of the actual admin flows, and the
 patient-app review flow, on a real device/browser is still needed from you).
