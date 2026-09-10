@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { theme } from "@doctor-connect/theme";
-import { AppointmentCard, EmptyState, ErrorState, LoadingState } from "@doctor-connect/ui-native";
+import { AppointmentCard, AppointmentCardSkeleton, EmptyState, ErrorState, ListSkeleton } from "@doctor-connect/ui-native";
 import { listMyAppointments, type AppointmentBucket } from "@/lib/api/appointments";
 import type { AppointmentWithDetails } from "@/lib/api/types";
 import { formatDateLabel, formatTimeLabel } from "@/lib/format";
@@ -14,6 +15,7 @@ const TABS: { value: AppointmentBucket; label: string }[] = [
 ];
 
 export default function AppointmentsScreen() {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<AppointmentBucket>("upcoming");
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,10 @@ export default function AppointmentsScreen() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.lg }]}
+    >
       <Text style={styles.title}>My Appointments</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
         {TABS.map((option) => (
@@ -53,7 +58,7 @@ export default function AppointmentsScreen() {
       </ScrollView>
 
       {loading ? (
-        <LoadingState title="Loading appointments…" />
+        <ListSkeleton item={AppointmentCardSkeleton} count={4} />
       ) : error ? (
         <ErrorState title={error} onAction={() => load(tab)} actionLabel="Try again" />
       ) : appointments.length === 0 ? (

@@ -20,7 +20,7 @@ export const authStyles = StyleSheet.create({
   subtitle: {
     fontSize: theme.fontSize.base,
     color: theme.colors.text.secondary,
-    marginTop: -theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   form: {
     gap: theme.spacing.md,

@@ -29,10 +29,11 @@ export function DateStrip({ items, selectedDate, onSelect }: DateStripProps) {
             onPress={() => onSelect(item.date)}
             style={[styles.item, isSelected && styles.itemSelected, item.disabled && styles.itemDisabled]}
           >
-            <Text style={[styles.dayOfWeek, isSelected && styles.textSelected]}>{item.dayOfWeek}</Text>
-            <Text style={[styles.dayNumber, isSelected && styles.textSelected]}>{item.dayNumber}</Text>
+            <Text style={[styles.dayNumber, isSelected && styles.textSelected]}>
+              {item.dayOfWeek.slice(0, 2)} {item.dayNumber}
+            </Text>
             {item.label ? (
-              <Text style={[styles.label, isSelected && styles.textSelected]}>{item.label}</Text>
+              <Text style={[styles.label, isSelected && styles.labelSelected]}>{item.label}</Text>
             ) : null}
           </Pressable>
         );
@@ -50,30 +51,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    backgroundColor: theme.colors.surface.default,
-    gap: 2,
+    backgroundColor: theme.colors.surface.subtle,
+    gap: 4,
   },
   itemSelected: {
-    backgroundColor: theme.colors.primary[500],
-    borderColor: theme.colors.primary[500],
+    backgroundColor: theme.colors.primary[600],
   },
   itemDisabled: {
     opacity: 0.4,
   },
-  dayOfWeek: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.text.tertiary,
-  },
   dayNumber: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.bold as any,
     color: theme.colors.text.primary,
   },
   label: {
-    fontSize: 10,
+    fontSize: theme.fontSize.xs,
     color: theme.colors.text.tertiary,
+  },
+  labelSelected: {
+    color: "rgba(255,255,255,0.85)",
   },
   textSelected: {
     color: theme.colors.text.inverse,

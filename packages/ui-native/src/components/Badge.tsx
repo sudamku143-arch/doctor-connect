@@ -49,6 +49,15 @@ export function VerifiedBadge() {
   );
 }
 
+export function VideoAvailableBadge() {
+  return (
+    <View style={styles.videoAvailableRow}>
+      <Ionicons name="videocam" size={theme.iconSizes.sm} color={theme.colors.success[700]} />
+      <Text style={styles.videoAvailableLabel}>Video Consultation Available</Text>
+    </View>
+  );
+}
+
 function toneColors(tone: BadgeTone): { bg: string; fg: string } {
   switch (tone) {
     case "info":
@@ -85,5 +94,21 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.medium as any,
     color: theme.colors.primary[600],
+  },
+  videoAvailableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: 4,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 3,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.success[50],
+  },
+  videoAvailableLabel: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.success[700],
   },
 });

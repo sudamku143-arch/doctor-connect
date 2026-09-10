@@ -44,7 +44,7 @@ export function buildDateStripItems(fromDateString: string, days: number): DateS
     const jsDate = new Date(`${date}T00:00:00`);
     return {
       date,
-      label: index === 0 ? "Today" : index === 1 ? "Tmrw" : "",
+      label: index === 0 ? "Today" : index === 1 ? "Tmrw" : WEEKDAY_SHORT[jsDate.getDay()] ?? "",
       dayOfWeek: WEEKDAY_SHORT[jsDate.getDay()] ?? "",
       dayNumber: String(jsDate.getDate()),
     };
@@ -59,6 +59,57 @@ export function getDirectionsUrl(clinic: Pick<Clinic, "latitude" | "longitude" |
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
+const TIMINGS_DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+// Honest "open till" label derived from the clinic's own timings jsonb —
+// there is no real-time occupancy signal, only the configured hours.
+export function getOpenStatusLabel(timings: Clinic["timings"]): string | null {
+  const dayKey = TIMINGS_DAY_KEYS[new Date().getDay()];
+  const today = timings?.[dayKey];
+  if (!today) return "Closed today";
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const [openH, openM] = today.open.split(":").map(Number);
+  const [closeH, closeM] = today.close.split(":").map(Number);
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+
+  if (nowMinutes < openMinutes) return `Opens ${formatTimeLabel(today.open)}`;
+  if (nowMinutes >= closeMinutes) return "Closed now";
+  return `Open till ${formatTimeLabel(today.close)}`;
+}
+
 export function getPhoneUrl(phone: string): string {
-  return `tel:${phone}`;
+  // tel: URIs with spaces (e.g. seeded numbers like "+91 9000000001") are
+  // rejected or silently ignored by some Android dialers — strip everything
+  // except digits and a leading "+".
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
+// Free, no-account video room (Jitsi Meet's public server) keyed by
+// appointment id — both the patient and the doctor's side join the same
+// URL, so no signaling/backend infra is needed for this to work.
+export function getVideoCallUrl(appointmentId: string): string {
+  return `https://meet.jit.si/DoctorConnect-${appointmentId}`;
+}
+
+// Video appointments open for joining a bit before the scheduled slot
+// (not the moment the appointment was booked, which could be days earlier).
+const VIDEO_CALL_LEAD_MINUTES = 10;
+
+function videoCallOpensAt(appointmentDate: string, appointmentTime: string): Date {
+  const scheduled = new Date(`${appointmentDate}T${appointmentTime}`);
+  return new Date(scheduled.getTime() - VIDEO_CALL_LEAD_MINUTES * 60 * 1000);
+}
+
+export function isVideoCallJoinable(appointmentDate: string, appointmentTime: string): boolean {
+  return Date.now() >= videoCallOpensAt(appointmentDate, appointmentTime).getTime();
+}
+
+export function getVideoCallOpensAtLabel(appointmentDate: string, appointmentTime: string): string {
+  const opensAt = videoCallOpensAt(appointmentDate, appointmentTime);
+  const hh = String(opensAt.getHours()).padStart(2, "0");
+  const mm = String(opensAt.getMinutes()).padStart(2, "0");
+  return formatTimeLabel(`${hh}:${mm}`);
 }

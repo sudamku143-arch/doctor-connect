@@ -24,10 +24,26 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-foreground.png",
+          "color": "#7C4DFF"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c8d48007-53a7-4222-a978-33332f87cc98"
+      }
+    },
+    "owner": "sudamku"
   }
 }

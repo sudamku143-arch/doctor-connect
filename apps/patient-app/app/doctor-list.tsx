@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import { DoctorCard, EmptyState, ErrorState, LoadingState } from "@doctor-connect/ui-native";
@@ -8,6 +9,7 @@ import type { DoctorListItem } from "@/lib/api/types";
 import { formatDateLabel, formatTimeLabel } from "@/lib/format";
 
 export default function DoctorListScreen() {
+  const insets = useSafeAreaInsets();
   const { specialtyId, specialtyName } = useLocalSearchParams<{ specialtyId: string; specialtyName?: string }>();
   const [doctors, setDoctors] = useState<DoctorListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,10 @@ export default function DoctorListScreen() {
   if (error) return <ErrorState title={error} />;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.lg }]}
+    >
       {specialtyName ? <Text style={styles.heading}>{specialtyName}</Text> : null}
       {doctors.length === 0 ? (
         <EmptyState title="No doctors found." description="Check back soon as more doctors join this specialty." />
@@ -48,7 +53,8 @@ export default function DoctorListScreen() {
                 : null
             }
             onViewProfile={() => router.push(`/doctor/${item.doctorClinicId}`)}
-            onBook={() => router.push({ pathname: "/(booking)/select-time", params: { doctorClinicId: item.doctorClinicId } })}
+            onClinicPress={() => router.push(`/clinic/${item.clinic.id}`)}
+            onBook={() => router.push({ pathname: "/(booking)/consultation-type", params: { doctorClinicId: item.doctorClinicId } })}
           />
         ))
       )}

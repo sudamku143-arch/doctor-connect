@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import { EmptyState, ErrorState, LoadingState } from "@doctor-connect/ui-native";
@@ -10,6 +11,7 @@ import type { AppointmentWithDetails } from "@/lib/api/types";
 
 export default function LiveQueueScreen() {
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const insets = useSafeAreaInsets();
   const [appointment, setAppointment] = useState<AppointmentWithDetails | null>(null);
   const [snapshot, setSnapshot] = useState<QueueSnapshot | null>(null);
   const [slotDuration, setSlotDuration] = useState(30);
@@ -63,7 +65,7 @@ export default function LiveQueueScreen() {
   const estimatedWaitMinutes = snapshot.patientsBeforeCount * slotDuration;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top + theme.spacing.lg }]}>
       <View style={styles.card}>
         <Text style={styles.label}>Your Token</Text>
         <Text style={styles.tokenValue}>#{snapshot.entry.token_number}</Text>

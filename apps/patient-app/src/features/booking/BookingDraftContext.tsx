@@ -1,4 +1,4 @@
-import type { AppointmentSlot, Clinic, Doctor } from "@doctor-connect/types";
+import type { AppointmentSlot, Clinic, ConsultationType, Doctor } from "@doctor-connect/types";
 import type { PatientDetailsInput } from "@doctor-connect/validation";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
@@ -7,6 +7,9 @@ export interface BookingDraft {
   doctor: Doctor;
   clinic: Clinic;
   consultationFee: number;
+  averageRating: number | null;
+  reviewCount: number;
+  consultationType: ConsultationType;
   slot: AppointmentSlot | null;
   patientDetails: PatientDetailsInput | null;
   familyMemberId: string | null;
@@ -20,7 +23,10 @@ interface BookingDraftContextValue {
     doctor: Doctor;
     clinic: Clinic;
     consultationFee: number;
+    averageRating: number | null;
+    reviewCount: number;
   }) => void;
+  setConsultationType: (consultationType: ConsultationType) => void;
   setSlot: (slot: AppointmentSlot) => void;
   setPatientDetails: (input: {
     patientDetails: PatientDetailsInput;
@@ -38,6 +44,7 @@ export function BookingDraftProvider({ children }: { children: ReactNode }) {
     () => ({
       draft,
       setDoctorContext: (context) => setDraft((prev) => ({ ...prev, ...context })),
+      setConsultationType: (consultationType) => setDraft((prev) => ({ ...prev, consultationType })),
       setSlot: (slot) => setDraft((prev) => ({ ...prev, slot })),
       setPatientDetails: (input) => setDraft((prev) => ({ ...prev, ...input })),
     }),

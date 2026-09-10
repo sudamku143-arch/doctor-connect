@@ -1,6 +1,8 @@
 import type {
   AppointmentStatus,
   BookingSource,
+  ConsultationMode,
+  ConsultationType,
   Gender,
   NotificationChannel,
   NotificationType,
@@ -55,6 +57,7 @@ export interface Doctor {
   experience_years: number;
   languages: string[];
   verification_status: VerificationStatus;
+  consultation_mode: ConsultationMode;
   created_at: string;
   updated_at: string;
 }
@@ -160,7 +163,9 @@ export interface Appointment {
   token_number: number | null;
   status: AppointmentStatus;
   booking_source: BookingSource;
+  consultation_type: ConsultationType;
   reason_for_visit: string | null;
+  cancellation_reason: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -247,5 +252,16 @@ export interface AuditLog {
   entity_id: string;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Prescription {
+  id: string;
+  appointment_id: string;
+  doctor_id: string;
+  patient_id: string;
+  clinic_id: string;
+  pdf_path: string;
+  status: "ACTIVE" | "SUPERSEDED";
   created_at: string;
 }

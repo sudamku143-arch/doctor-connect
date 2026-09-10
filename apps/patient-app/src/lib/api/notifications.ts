@@ -12,6 +12,15 @@ export async function listNotifications(): Promise<Notification[]> {
   return data ?? [];
 }
 
+export async function hasUnreadNotifications(): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   const { error } = await supabase
     .from("notifications")

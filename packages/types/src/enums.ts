@@ -77,6 +77,7 @@ export const NotificationType = {
   DOCTOR_UNAVAILABLE: "DOCTOR_UNAVAILABLE",
   RESCHEDULE_REQUEST: "RESCHEDULE_REQUEST",
   CANCELLATION: "CANCELLATION",
+  VIDEO_CALL_REMINDER: "VIDEO_CALL_REMINDER",
   QUEUE_UPDATE: "QUEUE_UPDATE",
   CLINIC_MESSAGE: "CLINIC_MESSAGE",
   SYSTEM_MESSAGE: "SYSTEM_MESSAGE",
@@ -96,3 +97,17 @@ export const Gender = {
   OTHER: "OTHER",
 } as const;
 export type Gender = (typeof Gender)[keyof typeof Gender];
+
+// What a doctor is willing to offer at all — set by the doctor/admin.
+export const ConsultationMode = {
+  BOTH: "BOTH",
+  PHYSICAL_ONLY: "PHYSICAL_ONLY",
+} as const;
+export type ConsultationMode = (typeof ConsultationMode)[keyof typeof ConsultationMode];
+
+// What the patient picked for one specific booking.
+export const ConsultationType = {
+  VIDEO: "VIDEO",
+  PHYSICAL: "PHYSICAL",
+} as const;
+export type ConsultationType = (typeof ConsultationType)[keyof typeof ConsultationType];

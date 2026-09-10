@@ -1,0 +1,21 @@
+insert into specialties (name, slug, icon) values
+  ('Orthopedic', 'orthopedic', 'bone'),
+  ('Gynecologist', 'gynecologist', 'female'),
+  ('Pediatrician', 'pediatrician', 'baby'),
+  ('Ophthalmologist', 'ophthalmologist', 'eye'),
+  ('ENT Specialist', 'ent-specialist', 'ear'),
+  ('Psychiatrist', 'psychiatrist', 'mind'),
+  ('Neurologist', 'neurologist', 'nerves'),
+  ('Endocrinologist', 'endocrinologist', 'hormone'),
+  ('Nephrologist', 'nephrologist', 'kidney'),
+  ('Gastroenterologist', 'gastroenterologist', 'stomach'),
+  ('Pulmonologist', 'pulmonologist', 'lungs'),
+  ('Urologist', 'urologist', 'urology'),
+  ('Oncologist', 'oncologist', 'cancer'),
+  ('Rheumatologist', 'rheumatologist', 'joint'),
+  ('General Surgeon', 'general-surgeon', 'surgery'),
+  ('Physiotherapist', 'physiotherapist', 'physio'),
+  ('Dietitian/Nutritionist', 'dietitian-nutritionist', 'diet'),
+  ('Ayurveda Doctor', 'ayurveda-doctor', 'ayurveda'),
+  ('Homeopathy Doctor', 'homeopathy-doctor', 'homeopathy')
+on conflict (slug) do nothing;

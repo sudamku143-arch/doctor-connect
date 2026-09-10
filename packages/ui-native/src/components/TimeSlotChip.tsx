@@ -38,24 +38,21 @@ export function TimeSlotChip({ label, selected = false, disabled = false, onPres
 const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    backgroundColor: theme.colors.surface.default,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
+    alignItems: "center",
+    backgroundColor: theme.colors.primary[50],
   },
   chipSelected: {
-    backgroundColor: theme.colors.primary[500],
-    borderColor: theme.colors.primary[500],
+    backgroundColor: theme.colors.primary[600],
   },
   chipDisabled: {
     backgroundColor: theme.colors.neutral[100],
-    borderColor: theme.colors.neutral[100],
   },
   label: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium as any,
-    color: theme.colors.text.primary,
+    color: theme.colors.primary[700],
   },
   labelSelected: {
     color: theme.colors.text.inverse,

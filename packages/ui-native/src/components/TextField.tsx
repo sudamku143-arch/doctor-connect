@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@doctor-connect/theme";
 
 export interface TextFieldProps extends Omit<TextInputProps, "style"> {
@@ -8,39 +9,65 @@ export interface TextFieldProps extends Omit<TextInputProps, "style"> {
   helperText?: string;
 }
 
-export function TextField({ label, error, helperText, onFocus, onBlur, ...inputProps }: TextFieldProps) {
+export function TextField({
+  label,
+  error,
+  helperText,
+  onFocus,
+  onBlur,
+  secureTextEntry,
+  ...inputProps
+}: TextFieldProps) {
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const sizeTokens = theme.inputSizes.md;
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        placeholderTextColor={theme.colors.text.tertiary}
-        onFocus={(e) => {
-          setFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          onBlur?.(e);
-        }}
-        style={[
-          styles.input,
-          {
-            height: sizeTokens.height,
-            paddingHorizontal: sizeTokens.paddingHorizontal,
-            fontSize: sizeTokens.fontSize,
-            borderRadius: sizeTokens.radius,
-            borderColor: error
-              ? theme.colors.error[500]
-              : focused
-                ? theme.colors.border.focus
-                : theme.colors.border.default,
-          },
-        ]}
-        {...inputProps}
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          placeholderTextColor={theme.colors.text.tertiary}
+          secureTextEntry={secureTextEntry && !revealed}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
+          style={[
+            styles.input,
+            {
+              height: sizeTokens.height,
+              paddingHorizontal: sizeTokens.paddingHorizontal,
+              paddingRight: secureTextEntry ? sizeTokens.height : sizeTokens.paddingHorizontal,
+              fontSize: sizeTokens.fontSize,
+              borderRadius: sizeTokens.radius,
+              borderColor: error
+                ? theme.colors.error[500]
+                : focused
+                  ? theme.colors.border.focus
+                  : theme.colors.border.default,
+            },
+          ]}
+          {...inputProps}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setRevealed((v) => !v)}
+            hitSlop={8}
+            style={[styles.revealButton, { height: sizeTokens.height }]}
+          >
+            <Ionicons
+              name={revealed ? "eye-off-outline" : "eye-outline"}
+              size={theme.iconSizes.sm}
+              color={theme.colors.text.tertiary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : helperText ? (
@@ -59,10 +86,21 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.medium as any,
     color: theme.colors.text.secondary,
   },
+  inputWrapper: {
+    justifyContent: "center",
+  },
   input: {
     borderWidth: 1,
     color: theme.colors.text.primary,
     backgroundColor: theme.colors.surface.default,
+  },
+  revealButton: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorText: {
     fontSize: theme.fontSize.xs,

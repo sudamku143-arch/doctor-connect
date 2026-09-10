@@ -1,4 +1,4 @@
-import type { Appointment, AppointmentStatus, Clinic, Doctor } from "@doctor-connect/types";
+import type { Appointment, AppointmentStatus, Clinic, ConsultationType, Doctor } from "@doctor-connect/types";
 import { supabase } from "@/lib/supabase/client";
 import type { AppointmentWithDetails } from "./types";
 
@@ -31,21 +31,23 @@ export async function bookAppointment(input: {
   slotId: string;
   reason: string;
   familyMemberId?: string | null;
+  consultationType: ConsultationType;
 }): Promise<Appointment> {
   const { data, error } = await supabase
     .rpc("book_appointment", {
       p_slot_id: input.slotId,
       p_reason: input.reason,
       p_family_member_id: input.familyMemberId ?? null,
+      p_consultation_type: input.consultationType,
     })
     .single<Appointment>();
   if (error) throw error;
   return data;
 }
 
-export async function cancelAppointment(appointmentId: string): Promise<Appointment> {
+export async function cancelAppointment(appointmentId: string, reason?: string): Promise<Appointment> {
   const { data, error } = await supabase
-    .rpc("cancel_appointment", { p_appointment_id: appointmentId })
+    .rpc("cancel_appointment", { p_appointment_id: appointmentId, p_reason: reason?.trim() || null })
     .single<Appointment>();
   if (error) throw error;
   return data;

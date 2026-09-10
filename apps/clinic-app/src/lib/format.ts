@@ -51,3 +51,30 @@ export function buildDateStripItems(fromDateString: string, days: number): DateS
 }
 
 export const DAY_OF_WEEK_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Same free, no-account Jitsi room the Patient App joins — keyed by
+// appointment id, so both sides land in the same room with no signaling
+// backend needed.
+export function getVideoCallUrl(appointmentId: string): string {
+  return `https://meet.jit.si/DoctorConnect-${appointmentId}`;
+}
+
+// Video appointments open for joining a bit before the scheduled slot
+// (not the moment the appointment was booked, which could be days earlier).
+const VIDEO_CALL_LEAD_MINUTES = 10;
+
+function videoCallOpensAt(appointmentDate: string, appointmentTime: string): Date {
+  const scheduled = new Date(`${appointmentDate}T${appointmentTime}`);
+  return new Date(scheduled.getTime() - VIDEO_CALL_LEAD_MINUTES * 60 * 1000);
+}
+
+export function isVideoCallJoinable(appointmentDate: string, appointmentTime: string): boolean {
+  return Date.now() >= videoCallOpensAt(appointmentDate, appointmentTime).getTime();
+}
+
+export function getVideoCallOpensAtLabel(appointmentDate: string, appointmentTime: string): string {
+  const opensAt = videoCallOpensAt(appointmentDate, appointmentTime);
+  const hh = String(opensAt.getHours()).padStart(2, "0");
+  const mm = String(opensAt.getMinutes()).padStart(2, "0");
+  return formatTimeLabel(`${hh}:${mm}`);
+}

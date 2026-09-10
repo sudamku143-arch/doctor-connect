@@ -7,6 +7,7 @@ export type DoctorSort = "recommended" | "highestRated" | "lowestFee";
 export interface DoctorSearchFilters {
   query?: string;
   specialtyId?: string;
+  city?: string | null;
   availableToday?: boolean;
   availableThisWeek?: boolean;
   sort?: DoctorSort;
@@ -18,6 +19,57 @@ interface DoctorClinicRow {
   is_active: boolean;
   doctor: Doctor;
   clinic: Clinic;
+}
+
+// Common everyday phrases patients search with, mapped to the specialty name
+// they actually mean — plain substring matching alone misses these (e.g.
+// "medicine doctor" doesn't literally appear in "General Physician").
+const SPECIALTY_SYNONYMS: Record<string, string> = {
+  "medicine doctor": "general physician",
+  medicine: "general physician",
+  "family doctor": "general physician",
+  "general doctor": "general physician",
+  "fever doctor": "general physician",
+  "child doctor": "pediatrician",
+  "children doctor": "pediatrician",
+  "kids doctor": "pediatrician",
+  "baby doctor": "pediatrician",
+  "skin doctor": "dermatologist",
+  "skin specialist": "dermatologist",
+  "tooth doctor": "dentist",
+  "teeth doctor": "dentist",
+  "dental doctor": "dentist",
+  "heart doctor": "cardiologist",
+  "heart specialist": "cardiologist",
+  "bone doctor": "orthopedic",
+  "joint doctor": "orthopedic",
+  "women doctor": "gynecologist",
+  "lady doctor": "gynecologist",
+  "eye doctor": "ophthalmologist",
+  "eye specialist": "ophthalmologist",
+};
+
+function matchesSearch(item: DoctorListItem, needle: string): boolean {
+  const haystacks = [
+    item.doctor.full_name.toLowerCase(),
+    item.clinic.name.toLowerCase(),
+    ...item.specialties.map((s) => s.name.toLowerCase()),
+  ];
+
+  if (haystacks.some((h) => h.includes(needle))) return true;
+
+  for (const [phrase, specialty] of Object.entries(SPECIALTY_SYNONYMS)) {
+    if ((needle.includes(phrase) || phrase.includes(needle)) && haystacks.some((h) => h.includes(specialty))) {
+      return true;
+    }
+  }
+
+  // Fuzzy fallback: a multi-word query matches if every word shows up
+  // somewhere, even if not as one contiguous phrase (word-order/typo tolerant).
+  const words = needle.split(/\s+/).filter(Boolean);
+  if (words.length > 1 && words.every((w) => haystacks.some((h) => h.includes(w)))) return true;
+
+  return false;
 }
 
 export async function searchDoctors(filters: DoctorSearchFilters = {}): Promise<DoctorListItem[]> {
@@ -41,6 +93,9 @@ export async function searchDoctors(filters: DoctorSearchFilters = {}): Promise<
 
   if (doctorIdsForSpecialty) {
     query = query.in("doctor_id", doctorIdsForSpecialty);
+  }
+  if (filters.city) {
+    query = query.eq("clinic.city", filters.city);
   }
 
   const { data: rows, error } = await query.returns<DoctorClinicRow[]>();
@@ -69,12 +124,7 @@ export async function searchDoctors(filters: DoctorSearchFilters = {}): Promise<
 
   if (filters.query?.trim()) {
     const needle = filters.query.trim().toLowerCase();
-    items = items.filter(
-      (item) =>
-        item.doctor.full_name.toLowerCase().includes(needle) ||
-        item.clinic.name.toLowerCase().includes(needle) ||
-        item.specialties.some((specialty) => specialty.name.toLowerCase().includes(needle)),
-    );
+    items = items.filter((item) => matchesSearch(item, needle));
   }
 
   if (filters.availableToday || filters.availableThisWeek) {
@@ -128,8 +178,8 @@ export async function getDoctorProfile(doctorClinicId: string): Promise<DoctorLi
   };
 }
 
-export async function listTopDoctors(limit = 5): Promise<DoctorListItem[]> {
-  const items = await searchDoctors({ sort: "highestRated" });
+export async function listTopDoctors(limit = 5, city?: string | null): Promise<DoctorListItem[]> {
+  const items = await searchDoctors({ sort: "highestRated", city });
   return items.slice(0, limit);
 }
 

@@ -13,6 +13,7 @@ export interface ConfirmationModalProps {
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: React.ReactNode;
 }
 
 export function ConfirmationModal({
@@ -25,6 +26,7 @@ export function ConfirmationModal({
   loading = false,
   onConfirm,
   onCancel,
+  children,
 }: ConfirmationModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -32,6 +34,7 @@ export function ConfirmationModal({
         <View style={styles.sheet}>
           <Text style={styles.title}>{title}</Text>
           {description ? <Text style={styles.description}>{description}</Text> : null}
+          {children}
           <View style={styles.actions}>
             <Button label={cancelLabel} variant="secondary" onPress={onCancel} style={styles.actionButton} />
             <Button

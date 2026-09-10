@@ -13,9 +13,10 @@ export default function BookingLayout() {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="select-time" options={{ title: "Select Date & Time" }} />
+        <Stack.Screen name="consultation-type" options={{ headerShown: false }} />
+        <Stack.Screen name="select-time" options={{ headerShown: false }} />
         <Stack.Screen name="patient-details" options={{ title: "Patient Details" }} />
-        <Stack.Screen name="summary" options={{ title: "Appointment Summary" }} />
+        <Stack.Screen name="summary" options={{ headerShown: false }} />
         <Stack.Screen name="confirmed" options={{ title: "Booking Confirmed", headerShown: false }} />
       </Stack>
     </BookingDraftProvider>

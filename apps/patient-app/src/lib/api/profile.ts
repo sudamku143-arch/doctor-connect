@@ -27,7 +27,7 @@ export async function getMyPatientRecord(): Promise<Patient> {
   return data;
 }
 
-export async function updateMyProfile(input: { fullName: string; phone: string | null }): Promise<void> {
+export async function updateMyProfile(input: { fullName: string; phone: string | null; email?: string }): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -35,7 +35,28 @@ export async function updateMyProfile(input: { fullName: string; phone: string |
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: input.fullName, phone: input.phone })
+    .update({ full_name: input.fullName, phone: input.phone, ...(input.email ? { email: input.email } : {}) })
     .eq("id", user.id);
+  if (error) throw error;
+}
+
+export async function updateMyPatientRecord(input: {
+  dateOfBirth: string | null;
+  gender: Patient["gender"];
+}): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const { error } = await supabase
+    .from("patients")
+    .update({ date_of_birth: input.dateOfBirth, gender: input.gender })
+    .eq("profile_id", user.id);
+  if (error) throw error;
+}
+
+export async function updateMyEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email });
   if (error) throw error;
 }

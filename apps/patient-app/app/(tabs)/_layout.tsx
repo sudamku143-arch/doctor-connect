@@ -2,12 +2,19 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@doctor-connect/theme";
 
-const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+const ICONS_FILLED: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: "home",
   appointments: "calendar",
   search: "search",
   notifications: "notifications",
   profile: "person",
+};
+const ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
+  index: "home-outline",
+  appointments: "calendar-outline",
+  search: "search-outline",
+  notifications: "notifications-outline",
+  profile: "person-outline",
 };
 
 export default function TabsLayout() {
@@ -18,8 +25,14 @@ export default function TabsLayout() {
         tabBarActiveTintColor: theme.colors.primary[500],
         tabBarInactiveTintColor: theme.colors.text.tertiary,
         tabBarStyle: { borderTopColor: theme.colors.border.default },
-        tabBarIcon: ({ color, size }) => (
-          <Ionicons name={ICONS[route.name] ?? "ellipse"} color={color} size={size} />
+        tabBarLabelStyle: { fontSize: 11, fontWeight: theme.fontWeight.medium as any },
+        tabBarItemStyle: { paddingHorizontal: 2 },
+        tabBarIcon: ({ color, size, focused }) => (
+          <Ionicons
+            name={(focused ? ICONS_FILLED[route.name] : ICONS_OUTLINE[route.name]) ?? "ellipse-outline"}
+            color={color}
+            size={size}
+          />
         ),
       })}
     >

@@ -15,7 +15,7 @@ export default async function PaymentsPage() {
 
       <Card>
         <Table
-          headers={["Patient", "Clinic", "Amount", "Platform Fee", "Clinic Amount", "Status", "Date"]}
+          headers={["Patient", "Clinic", "Amount", "Convenience Fee", "Clinic Amount", "Status", "Date"]}
           isEmpty={payments.length === 0}
           emptyMessage="No payments yet."
         >

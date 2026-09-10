@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
-import { EmptyState, ErrorState, LoadingState, PrimaryButton, VerifiedBadge } from "@doctor-connect/ui-native";
+import { DetailSkeleton, EmptyState, ErrorState, PrimaryButton, VerifiedBadge, VideoAvailableBadge } from "@doctor-connect/ui-native";
 import type { AppointmentSlot } from "@doctor-connect/types";
 import { getDoctorProfile } from "@/lib/api/doctors";
 import { listSlotsForDate } from "@/lib/api/slots";
@@ -13,6 +14,7 @@ import { formatDateLabel, formatTimeLabel, getDirectionsUrl, getPhoneUrl, todayD
 
 export default function DoctorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<DoctorListItem | null>(null);
   const [reviews, setReviews] = useState<DoctorReview[]>([]);
   const [previewSlots, setPreviewSlots] = useState<AppointmentSlot[]>([]);
@@ -41,14 +43,23 @@ export default function DoctorProfileScreen() {
     };
   }, [id]);
 
-  if (loading) return <LoadingState title="Loading doctor profile…" />;
+  if (loading) {
+    return (
+      <View style={[styles.content, { flex: 1, paddingTop: insets.top + theme.spacing.lg }]}>
+        <DetailSkeleton />
+      </View>
+    );
+  }
   if (error) return <ErrorState title={error} />;
   if (!profile) return <EmptyState title="Doctor not found" />;
 
   const { doctor, clinic, specialties, consultationFee, averageRating, reviewCount } = profile;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.lg }]}
+    >
       <View style={styles.headerRow}>
         <View style={styles.photoFallback}>
           <Text style={styles.photoInitial}>{doctor.full_name.charAt(0).toUpperCase()}</Text>
@@ -68,6 +79,7 @@ export default function DoctorProfileScreen() {
             </Text>
             <Text style={styles.experienceText}>· {doctor.experience_years}+ yrs experience</Text>
           </View>
+          {doctor.consultation_mode === "BOTH" ? <VideoAvailableBadge /> : null}
         </View>
       </View>
 
@@ -136,7 +148,7 @@ export default function DoctorProfileScreen() {
 
       <PrimaryButton
         label="Book Appointment"
-        onPress={() => router.push({ pathname: "/(booking)/select-time", params: { doctorClinicId: profile.doctorClinicId } })}
+        onPress={() => router.push({ pathname: "/(booking)/consultation-type", params: { doctorClinicId: profile.doctorClinicId } })}
         style={styles.bookButton}
       />
     </ScrollView>

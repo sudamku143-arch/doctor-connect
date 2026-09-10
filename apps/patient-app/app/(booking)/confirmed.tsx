@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
@@ -9,6 +10,7 @@ import type { AppointmentWithDetails } from "@/lib/api/types";
 import { formatDateLabel, formatTimeLabel, getDirectionsUrl } from "@/lib/format";
 
 export default function ConfirmedScreen() {
+  const insets = useSafeAreaInsets();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
   const [appointment, setAppointment] = useState<AppointmentWithDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,10 @@ export default function ConfirmedScreen() {
   if (!appointment) return <LoadingState title="Loading confirmation…" />;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.lg }]}
+    >
       <View style={styles.iconCircle}>
         <Ionicons name="checkmark" size={40} color={theme.colors.text.inverse} />
       </View>

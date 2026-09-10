@@ -1,12 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import {
   Button,
   ConfirmationModal,
   ErrorState,
   LoadingState,
+  PrimaryButton,
   SecondaryButton,
   StatusBadge,
 } from "@doctor-connect/ui-native";
@@ -19,7 +20,15 @@ import {
   requestRescheduleByClinic,
 } from "@/lib/api/appointments";
 import type { ClinicAppointment } from "@/lib/api/types";
-import { formatDateLabel, formatTimeLabel, todayDateString } from "@/lib/format";
+import {
+  formatDateLabel,
+  formatTimeLabel,
+  getVideoCallOpensAtLabel,
+  isVideoCallJoinable,
+  todayDateString,
+} from "@/lib/format";
+
+const VIDEO_CALL_STATUSES = ["CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"];
 
 type ConfirmAction = "cancel" | "noshow" | "reschedule" | null;
 
@@ -31,6 +40,14 @@ export default function ClinicAppointmentDetailsScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [busy, setBusy] = useState(false);
+
+  // Re-checks the video-call join window every 30s so the button flips from
+  // disabled to active on its own, without needing a manual refresh.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -54,6 +71,12 @@ export default function ClinicAppointmentDetailsScreen() {
   const canCheckIn = isToday && (appointment.status === "CONFIRMED" || appointment.status === "PENDING_PAYMENT");
   const canComplete = appointment.status === "IN_CONSULTATION";
   const canNoShow = appointment.status === "WAITING" || appointment.status === "CHECKED_IN";
+  const isVideoAppointment =
+    appointment.consultation_type === "VIDEO" && VIDEO_CALL_STATUSES.includes(appointment.status);
+  const videoWindowOpen = isVideoAppointment && isVideoCallJoinable(appointment.appointment_date, appointment.appointment_time);
+  const canJoinVideoCall = isVideoAppointment && videoWindowOpen;
+  const videoNotYetOpen = isVideoAppointment && !videoWindowOpen;
+  const canUploadPrescription = appointment.status === "COMPLETED";
   const nonTerminal = ![
     "COMPLETED",
     "CANCELLED_BY_PATIENT",
@@ -85,6 +108,10 @@ export default function ClinicAppointmentDetailsScreen() {
 
       <View style={styles.card}>
         <Row label="Doctor" value={appointment.doctor.full_name} />
+        <Row
+          label="Treatment Type"
+          value={appointment.consultation_type === "VIDEO" ? "Video Consultation" : "Physical Consultation"}
+        />
         <Row label="Date" value={formatDateLabel(appointment.appointment_date)} />
         <Row label="Time" value={formatTimeLabel(appointment.appointment_time)} />
         {appointment.token_number != null ? <Row label="Token" value={`#${appointment.token_number}`} /> : null}
@@ -96,8 +123,27 @@ export default function ClinicAppointmentDetailsScreen() {
       {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
 
       <View style={styles.actions}>
+        {canJoinVideoCall ? (
+          <PrimaryButton
+            label="Join Video Call"
+            onPress={() => router.push(`/video-call/${appointment.id}`)}
+          />
+        ) : videoNotYetOpen ? (
+          <>
+            <PrimaryButton label="Join Video Call" disabled />
+            <Text style={styles.videoHint}>
+              Available from {getVideoCallOpensAtLabel(appointment.appointment_date, appointment.appointment_time)}
+            </Text>
+          </>
+        ) : null}
         {canCheckIn ? (
           <Button label="Check In" onPress={() => run(() => checkinAppointment(appointment.id))} loading={busy} />
+        ) : null}
+        {canUploadPrescription ? (
+          <SecondaryButton
+            label="Upload Prescription"
+            onPress={() => router.push(`/prescription-upload/${appointment.id}`)}
+          />
         ) : null}
         {canComplete ? (
           <Button label="Mark Completed" onPress={() => run(() => completeConsultation(appointment.id))} loading={busy} />
@@ -197,6 +243,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: theme.spacing.sm,
+  },
+  videoHint: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    textAlign: "center",
+    marginTop: -theme.spacing.xs,
   },
   error: {
     fontSize: theme.fontSize.sm,

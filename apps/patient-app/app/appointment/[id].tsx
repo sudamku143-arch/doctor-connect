@@ -1,13 +1,16 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@doctor-connect/theme";
 import {
   Button,
   ConfirmationModal,
+  DetailSkeleton,
   ErrorState,
-  LoadingState,
   PrimaryButton,
   SecondaryButton,
   StatusBadge,
@@ -16,14 +19,25 @@ import {
 import { cancelAppointment, getAppointmentDetails } from "@/lib/api/appointments";
 import { getDoctorClinicId } from "@/lib/api/doctors";
 import { getQueueSnapshot, type QueueSnapshot } from "@/lib/api/queue";
+import { getActivePrescription, getPrescriptionDownloadUrl } from "@/lib/api/prescriptions";
 import { hasReviewed, submitReview } from "@/lib/api/reviews";
 import type { AppointmentWithDetails } from "@/lib/api/types";
-import { formatDateLabel, formatTimeLabel, getDirectionsUrl, getPhoneUrl } from "@/lib/format";
+import type { Prescription } from "@doctor-connect/types";
+import {
+  formatDateLabel,
+  formatTimeLabel,
+  getDirectionsUrl,
+  getPhoneUrl,
+  getVideoCallOpensAtLabel,
+  isVideoCallJoinable,
+} from "@/lib/format";
 
 const QUEUE_VISIBLE_STATUSES = ["CHECKED_IN", "WAITING", "IN_CONSULTATION"];
 const CANCELLABLE_STATUSES = ["PENDING_PAYMENT", "CONFIRMED", "RESCHEDULE_REQUESTED"];
+const VIDEO_CALL_STATUSES = ["CONFIRMED", "CHECKED_IN", "WAITING", "IN_CONSULTATION"];
 
 export default function AppointmentDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [appointment, setAppointment] = useState<AppointmentWithDetails | null>(null);
   const [queueSnapshot, setQueueSnapshot] = useState<QueueSnapshot | null>(null);
@@ -32,6 +46,7 @@ export default function AppointmentDetailsScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<"cancel" | "reschedule" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   const [reviewed, setReviewed] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -39,6 +54,18 @@ export default function AppointmentDetailsScreen() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const [prescription, setPrescription] = useState<Prescription | null>(null);
+  const [downloadingPrescription, setDownloadingPrescription] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  // Re-checks the video-call join window every 30s so the button flips from
+  // disabled to active on its own, without the user backgrounding the app.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -51,6 +78,7 @@ export default function AppointmentDetailsScreen() {
         }
         if (data && data.status === "COMPLETED") {
           setReviewed(await hasReviewed(data.id));
+          setPrescription(await getActivePrescription(data.id));
         }
       })
       .catch(() => setError("Something went wrong. Please try again."))
@@ -63,18 +91,30 @@ export default function AppointmentDetailsScreen() {
     }, [load]),
   );
 
-  if (loading) return <LoadingState title="Loading appointment…" />;
+  if (loading) {
+    return (
+      <View style={[styles.content, { flex: 1, paddingTop: insets.top + theme.spacing.lg }]}>
+        <DetailSkeleton />
+      </View>
+    );
+  }
   if (error) return <ErrorState title={error} onAction={load} actionLabel="Try again" />;
   if (!appointment) return <ErrorState title="Appointment not found" />;
 
   const isCancellable = CANCELLABLE_STATUSES.includes(appointment.status);
+  const isVideoAppointment =
+    appointment.consultation_type === "VIDEO" && VIDEO_CALL_STATUSES.includes(appointment.status);
+  const videoWindowOpen = isVideoAppointment && isVideoCallJoinable(appointment.appointment_date, appointment.appointment_time);
+  const canJoinVideoCall = isVideoAppointment && videoWindowOpen;
+  const videoNotYetOpen = isVideoAppointment && !videoWindowOpen;
 
   async function handleCancel() {
     setActionLoading(true);
     setActionError(null);
     try {
-      await cancelAppointment(appointment!.id);
+      await cancelAppointment(appointment!.id, cancelReason);
       setConfirmAction(null);
+      setCancelReason("");
       load();
     } catch {
       setActionError("Could not cancel this appointment. Please try again.");
@@ -110,7 +150,7 @@ export default function AppointmentDetailsScreen() {
       await cancelAppointment(appointment!.id);
       setConfirmAction(null);
       if (doctorClinicId) {
-        router.replace({ pathname: "/(booking)/select-time", params: { doctorClinicId } });
+        router.replace({ pathname: "/(booking)/consultation-type", params: { doctorClinicId } });
       } else {
         router.replace("/(tabs)/appointments");
       }
@@ -121,8 +161,29 @@ export default function AppointmentDetailsScreen() {
     }
   }
 
+  async function handleDownloadPrescription() {
+    if (!prescription) return;
+    setDownloadingPrescription(true);
+    setDownloadError(null);
+    try {
+      const signedUrl = await getPrescriptionDownloadUrl(prescription.pdf_path);
+      const localUri = `${FileSystem.cacheDirectory}prescription-${prescription.id}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(signedUrl, localUri);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch {
+      setDownloadError("Could not download the prescription. Please try again.");
+    } finally {
+      setDownloadingPrescription(false);
+    }
+  }
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.lg }]}
+    >
       <View style={styles.headerRow}>
         <Text style={styles.doctorName}>{appointment.doctor.full_name}</Text>
         <StatusBadge status={appointment.status} />
@@ -130,11 +191,23 @@ export default function AppointmentDetailsScreen() {
       <Text style={styles.clinicName}>{appointment.clinic.name}</Text>
 
       <View style={styles.card}>
+        <Row
+          label="Treatment Type"
+          value={appointment.consultation_type === "VIDEO" ? "Video Consultation" : "Physical Consultation"}
+        />
         <Row label="Date" value={formatDateLabel(appointment.appointment_date)} />
         <Row label="Time" value={formatTimeLabel(appointment.appointment_time)} />
         {appointment.token_number != null ? <Row label="Token" value={`#${appointment.token_number}`} /> : null}
         <Row label="Address" value={`${appointment.clinic.address}, ${appointment.clinic.city}`} />
+        <Row label="Convenience Fee" value="₹10" />
+        <Row
+          label="Consultation Fee"
+          value={appointment.consultation_type === "VIDEO" ? "Paid Online" : "Pay at Clinic"}
+        />
         {appointment.reason_for_visit ? <Row label="Reason" value={appointment.reason_for_visit} /> : null}
+        {appointment.cancellation_reason ? (
+          <Row label="Cancellation reason" value={appointment.cancellation_reason} />
+        ) : null}
       </View>
 
       {queueSnapshot?.entry && appointment.status === "WAITING" ? (
@@ -144,6 +217,18 @@ export default function AppointmentDetailsScreen() {
             This is an estimate only, based on patients waiting ahead of you.
           </Text>
           <SecondaryButton label="View Live Queue" onPress={() => router.push(`/queue/${appointment.id}`)} />
+        </View>
+      ) : null}
+
+      {appointment.status === "COMPLETED" && prescription ? (
+        <View style={styles.card}>
+          <Text style={styles.reviewLabel}>Prescription</Text>
+          {downloadError ? <Text style={styles.error}>{downloadError}</Text> : null}
+          <SecondaryButton
+            label="Download Prescription"
+            onPress={handleDownloadPrescription}
+            loading={downloadingPrescription}
+          />
         </View>
       ) : null}
 
@@ -181,6 +266,19 @@ export default function AppointmentDetailsScreen() {
       {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
 
       <View style={styles.actions}>
+        {canJoinVideoCall ? (
+          <PrimaryButton
+            label="Join Video Call"
+            onPress={() => router.push(`/video-call/${appointment.id}`)}
+          />
+        ) : videoNotYetOpen ? (
+          <>
+            <PrimaryButton label="Join Video Call" disabled />
+            <Text style={styles.videoHint}>
+              Available from {getVideoCallOpensAtLabel(appointment.appointment_date, appointment.appointment_time)}
+            </Text>
+          </>
+        ) : null}
         <SecondaryButton
           label="Get Directions"
           onPress={() => Linking.openURL(getDirectionsUrl(appointment.clinic))}
@@ -207,8 +305,18 @@ export default function AppointmentDetailsScreen() {
         danger
         loading={actionLoading}
         onConfirm={handleCancel}
-        onCancel={() => setConfirmAction(null)}
-      />
+        onCancel={() => {
+          setConfirmAction(null);
+          setCancelReason("");
+        }}
+      >
+        <TextField
+          label="Reason (optional)"
+          value={cancelReason}
+          onChangeText={setCancelReason}
+          placeholder="e.g. Schedule conflict"
+        />
+      </ConfirmationModal>
       <ConfirmationModal
         visible={confirmAction === "reschedule"}
         title="Reschedule this appointment?"
@@ -270,14 +378,15 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   rowLabel: {
+    flexShrink: 0,
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
   },
   rowValue: {
+    flex: 1,
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium as any,
     color: theme.colors.text.primary,
-    flexShrink: 1,
     textAlign: "right",
   },
   estimateNote: {
@@ -295,6 +404,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: theme.spacing.sm,
+  },
+  videoHint: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    textAlign: "center",
+    marginTop: -theme.spacing.xs,
   },
   error: {
     fontSize: theme.fontSize.sm,

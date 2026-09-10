@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import { ErrorState, LoadingState, PrimaryButton, TextField } from "@doctor-connect/ui-native";
@@ -12,8 +13,19 @@ import { getMyPatientRecord, getMyProfile } from "@/lib/api/profile";
 type Who = "myself" | { familyMemberId: string; familyMemberName: string };
 
 const GENDERS: Gender[] = ["MALE", "FEMALE", "OTHER"];
+const RELATIONS = ["Spouse", "Child", "Parent", "Sibling", "Other"];
+
+function ageFromDateOfBirth(dateOfBirth: string | null): string {
+  if (!dateOfBirth) return "";
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return "";
+  const diffMs = Date.now() - dob.getTime();
+  const years = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
+  return years >= 0 && years <= 120 ? String(years) : "";
+}
 
 export default function PatientDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const { setPatientDetails } = useBookingDraft();
 
   const [loading, setLoading] = useState(true);
@@ -22,9 +34,10 @@ export default function PatientDetailsScreen() {
   const [who, setWho] = useState<Who>("myself");
 
   const [name, setName] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [gender, setGender] = useState<Gender>("MALE");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState<Gender | undefined>(undefined);
   const [mobile, setMobile] = useState("");
+  const [relation, setRelation] = useState<string | undefined>(undefined);
   const [reasonForVisit, setReasonForVisit] = useState("");
   const [errors, setErrors] = useState<Partial<Record<keyof PatientDetailsInput, string>>>({});
 
@@ -40,8 +53,8 @@ export default function PatientDetailsScreen() {
         if (cancelled) return;
         setName(profile.full_name);
         setMobile(profile.phone ?? "");
-        setDateOfBirth(patient.date_of_birth ?? "");
-        setGender(patient.gender ?? "MALE");
+        setAge(ageFromDateOfBirth(patient.date_of_birth));
+        setGender(patient.gender ?? undefined);
         setFamilyMembers(members);
       })
       .catch(() => !cancelled && setLoadError("Something went wrong. Please try again."))
@@ -53,13 +66,15 @@ export default function PatientDetailsScreen() {
 
   function selectMyself() {
     setWho("myself");
+    setRelation(undefined);
   }
 
   function selectFamilyMember(member: FamilyMember) {
     setWho({ familyMemberId: member.id, familyMemberName: member.name });
     setName(member.name);
-    setDateOfBirth(member.date_of_birth ?? "");
-    setGender(member.gender ?? "MALE");
+    setAge(ageFromDateOfBirth(member.date_of_birth));
+    setGender(member.gender ?? undefined);
+    setRelation(member.relation);
   }
 
   async function handleAddMember() {
@@ -80,14 +95,28 @@ export default function PatientDetailsScreen() {
   }
 
   function handleContinue() {
-    const result = patientDetailsSchema.safeParse({ name, dateOfBirth, gender, mobile, reasonForVisit });
+    const result = patientDetailsSchema.safeParse({
+      name,
+      age,
+      gender,
+      mobile,
+      relation: who === "myself" ? undefined : relation,
+      reasonForVisit,
+    });
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof PatientDetailsInput, string>> = {};
       for (const issue of result.error.issues) {
         const key = issue.path[0] as keyof PatientDetailsInput;
         fieldErrors[key] = issue.message;
       }
+      if (who !== "myself" && !relation) {
+        fieldErrors.relation = "This field is required";
+      }
       setErrors(fieldErrors);
+      return;
+    }
+    if (who !== "myself" && !relation) {
+      setErrors((prev) => ({ ...prev, relation: "This field is required" }));
       return;
     }
     setErrors({});
@@ -103,7 +132,20 @@ export default function PatientDetailsScreen() {
   if (loadError) return <ErrorState title={loadError} onAction={() => setLoadError(null)} actionLabel="Dismiss" />;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+    >
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + theme.spacing.lg, paddingBottom: insets.bottom + 140 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.toggleRow}>
         <Pressable
           onPress={selectMyself}
@@ -154,38 +196,82 @@ export default function PatientDetailsScreen() {
         </View>
       ) : null}
 
-      <TextField label="Patient name" value={name} onChangeText={setName} error={errors.name} />
+      {who !== "myself" ? (
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Relation with patient *</Text>
+          <View style={styles.chipRow}>
+            {RELATIONS.map((option) => (
+              <Pressable
+                key={option}
+                onPress={() => setRelation(option)}
+                style={[styles.relationChip, relation === option && styles.relationChipSelected]}
+              >
+                <Text style={[styles.relationChipLabel, relation === option && styles.relationChipLabelSelected]}>
+                  {option}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {errors.relation ? <Text style={styles.errorText}>{errors.relation}</Text> : null}
+        </View>
+      ) : null}
+
+      <TextField label="Patient name *" value={name} onChangeText={setName} error={errors.name} />
+
       <TextField
-        label="Date of birth"
-        placeholder="YYYY-MM-DD"
-        value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-        error={errors.dateOfBirth}
+        label="Age *"
+        placeholder="e.g. 28"
+        keyboardType="number-pad"
+        maxLength={3}
+        value={age}
+        onChangeText={(v) => setAge(v.replace(/[^0-9]/g, ""))}
+        error={errors.age}
       />
 
-      <View style={styles.genderRow}>
-        {GENDERS.map((option) => (
-          <Pressable
-            key={option}
-            onPress={() => setGender(option)}
-            style={[styles.genderButton, gender === option && styles.genderButtonActive]}
-          >
-            <Text style={[styles.genderLabel, gender === option && styles.genderLabelActive]}>
-              {option.charAt(0) + option.slice(1).toLowerCase()}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Gender *</Text>
+        <View style={styles.genderRow}>
+          {GENDERS.map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => setGender(option)}
+              style={[styles.genderButton, gender === option && styles.genderButtonActive]}
+            >
+              <Text
+                style={[styles.genderLabel, gender === option && styles.genderLabelActive]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {option.charAt(0) + option.slice(1).toLowerCase()}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {errors.gender ? <Text style={styles.errorText}>{errors.gender}</Text> : null}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Mobile number *</Text>
+        <View style={styles.mobileRow}>
+          <View style={styles.mobilePrefix}>
+            <Text style={styles.mobilePrefixText}>+91</Text>
+          </View>
+          <View style={styles.mobileInput}>
+            <TextField
+              label=""
+              placeholder="10-digit mobile number"
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={mobile}
+              onChangeText={(v) => setMobile(v.replace(/[^0-9]/g, ""))}
+              error={errors.mobile}
+            />
+          </View>
+        </View>
       </View>
 
       <TextField
-        label="Mobile number"
-        keyboardType="phone-pad"
-        value={mobile}
-        onChangeText={setMobile}
-        error={errors.mobile}
-      />
-      <TextField
-        label="Reason for visit"
+        label="Reason for visit (optional)"
         placeholder="e.g. Fever, routine checkup"
         value={reasonForVisit}
         onChangeText={setReasonForVisit}
@@ -193,7 +279,8 @@ export default function PatientDetailsScreen() {
       />
 
       <PrimaryButton label="Continue" onPress={handleContinue} style={styles.continueButton} />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -272,13 +359,41 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.md,
     backgroundColor: theme.colors.surface.subtle,
   },
+  fieldGroup: {
+    gap: theme.spacing.xxs,
+  },
+  fieldLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium as any,
+    color: theme.colors.text.secondary,
+  },
+  relationChip: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radii.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+  },
+  relationChipSelected: {
+    backgroundColor: theme.colors.primary[500],
+    borderColor: theme.colors.primary[500],
+  },
+  relationChipLabel: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.primary,
+  },
+  relationChipLabelSelected: {
+    color: theme.colors.text.inverse,
+    fontWeight: theme.fontWeight.semibold as any,
+  },
   genderRow: {
     flexDirection: "row",
     gap: theme.spacing.xs,
   },
   genderButton: {
     flex: 1,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.xxs,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.md,
     borderWidth: 1,
     borderColor: theme.colors.border.default,
@@ -295,6 +410,33 @@ const styles = StyleSheet.create({
   genderLabelActive: {
     color: theme.colors.primary[700],
     fontWeight: theme.fontWeight.semibold as any,
+  },
+  mobileRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: theme.spacing.xs,
+  },
+  mobilePrefix: {
+    height: theme.inputSizes.md.height,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.inputSizes.md.radius,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+    backgroundColor: theme.colors.surface.subtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mobilePrefixText: {
+    fontSize: theme.inputSizes.md.fontSize,
+    color: theme.colors.text.primary,
+    fontWeight: theme.fontWeight.medium as any,
+  },
+  mobileInput: {
+    flex: 1,
+  },
+  errorText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.error[500],
   },
   continueButton: {
     marginTop: theme.spacing.sm,

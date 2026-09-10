@@ -31,6 +31,22 @@ export async function addFamilyMember(input: FamilyMemberInput): Promise<FamilyM
   return data;
 }
 
+export async function updateFamilyMember(id: string, input: FamilyMemberInput): Promise<FamilyMember> {
+  const { data, error } = await supabase
+    .from("family_members")
+    .update({
+      name: input.name,
+      relation: input.relation,
+      date_of_birth: input.dateOfBirth || null,
+      gender: input.gender ?? null,
+    })
+    .eq("id", id)
+    .select()
+    .single<FamilyMember>();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteFamilyMember(id: string): Promise<void> {
   const { error } = await supabase.from("family_members").delete().eq("id", id);
   if (error) throw error;

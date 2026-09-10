@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { VerificationStatus } from "@doctor-connect/types";
+import type { ConsultationMode, VerificationStatus } from "@doctor-connect/types";
 import { requireSuperAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
 
@@ -18,6 +18,7 @@ export async function createDoctorAction(_prev: ActionState, formData: FormData)
   const registrationNumber = String(formData.get("registrationNumber") ?? "").trim();
   const experienceYears = Number(formData.get("experienceYears") ?? 0);
   const bio = String(formData.get("bio") ?? "").trim();
+  const consultationMode = (formData.get("consultationMode") as ConsultationMode | null) ?? "BOTH";
 
   if (!fullName || !qualification || !registrationNumber) {
     return { error: "Name, qualification, and registration number are required." };
@@ -31,6 +32,7 @@ export async function createDoctorAction(_prev: ActionState, formData: FormData)
       registration_number: registrationNumber,
       experience_years: experienceYears || 0,
       bio: bio || null,
+      consultation_mode: consultationMode,
     })
     .select("id")
     .single<{ id: string }>();
@@ -47,6 +49,7 @@ export async function updateDoctorAction(doctorId: string, _prev: ActionState, f
   const qualification = String(formData.get("qualification") ?? "").trim();
   const experienceYears = Number(formData.get("experienceYears") ?? 0);
   const bio = String(formData.get("bio") ?? "").trim();
+  const consultationMode = (formData.get("consultationMode") as ConsultationMode | null) ?? "BOTH";
 
   if (!fullName || !qualification) {
     return { error: "Name and qualification are required." };
@@ -54,7 +57,13 @@ export async function updateDoctorAction(doctorId: string, _prev: ActionState, f
 
   const { error } = await supabase
     .from("doctors")
-    .update({ full_name: fullName, qualification, experience_years: experienceYears || 0, bio: bio || null })
+    .update({
+      full_name: fullName,
+      qualification,
+      experience_years: experienceYears || 0,
+      bio: bio || null,
+      consultation_mode: consultationMode,
+    })
     .eq("id", doctorId);
   if (error) return { error: "Could not save changes." };
 
