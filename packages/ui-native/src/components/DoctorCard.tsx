@@ -118,6 +118,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.subtle,
     gap: theme.spacing.sm,
+    ...theme.cardShadow,
   },
   topRow: {
     flexDirection: "row",

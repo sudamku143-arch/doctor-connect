@@ -7,7 +7,8 @@
   "dependencies": {
     "@doctor-connect/theme": "workspace:*",
     "@doctor-connect/types": "workspace:*",
-    "@expo/vector-icons": "^15.0.0"
+    "@expo/vector-icons": "^15.0.0",
+    "expo-linear-gradient": "~57.0.1"
   },
   "peerDependencies": {
     "react": "19.2.3",

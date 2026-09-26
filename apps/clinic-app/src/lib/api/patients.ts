@@ -1,6 +1,6 @@
 import type { Appointment, Doctor, Patient, Profile } from "@doctor-connect/types";
 import { supabase } from "@/lib/supabase/client";
-import type { ClinicAppointment } from "./types";
+import type { BookingPatientMatch, ClinicAppointment } from "./types";
 
 export interface PatientSearchResult extends Patient {
   profile: Profile;
@@ -57,6 +57,22 @@ export async function getPatientByAppointmentId(appointmentId: string): Promise<
 
 interface AppointmentRow extends Appointment {
   doctor: Doctor;
+}
+
+// Bypasses the "patient has history at this clinic" RLS restriction via a
+// narrow security-definer RPC — used only for the New Appointment quick-
+// booking flow, where the patient may be new to this clinic. Returns
+// identifying fields only, never the full patient record.
+export async function findPatientsForBooking(clinicId: string, query: string): Promise<BookingPatientMatch[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const { data, error } = await supabase.rpc("find_patients_for_booking", {
+    p_clinic_id: clinicId,
+    p_query: trimmed,
+  });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function getPatientHistoryAtClinic(patientId: string, clinicId: string): Promise<ClinicAppointment[]> {

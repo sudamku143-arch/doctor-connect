@@ -10,7 +10,7 @@ import { spacing } from "./spacing";
 import { radii } from "./radii";
 import { shadows } from "./shadows";
 import { fontFamily, fontSize, fontWeight, lineHeight } from "./typography";
-import { buttonSizes, inputSizes, badgeSizes, iconSizes, cardStyle } from "./components";
+import { buttonSizes, inputSizes, badgeSizes, iconSizes, cardStyle, cardShadow, heroGradient } from "./components";
 
 export const theme = {
   colors,
@@ -26,6 +26,8 @@ export const theme = {
   badgeSizes,
   iconSizes,
   cardStyle,
+  cardShadow,
+  heroGradient,
 } as const;
 
 export type Theme = typeof theme;

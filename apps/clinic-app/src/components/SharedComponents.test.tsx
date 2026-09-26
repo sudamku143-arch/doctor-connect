@@ -8,14 +8,14 @@ import { QueueCard, StatusBadge } from "@doctor-connect/ui-native";
 // per-component coverage.
 
 describe("@doctor-connect/ui-native smoke test (via clinic-app)", () => {
-  it("renders a QueueCard's token number and patient name", () => {
-    render(<QueueCard tokenNumber={12} patientName="Ramesh" />);
+  it("renders a QueueCard's token number and patient name", async () => {
+    await render(<QueueCard tokenNumber={12} patientName="Ramesh" />);
     expect(screen.getByText("#12")).toBeTruthy();
     expect(screen.getByText("Ramesh")).toBeTruthy();
   });
 
-  it("renders a StatusBadge with the expected label for a known status", () => {
-    render(<StatusBadge status="WAITING" />);
+  it("renders a StatusBadge with the expected label for a known status", async () => {
+    await render(<StatusBadge status="WAITING" />);
     expect(screen.getByText("Waiting")).toBeTruthy();
   });
 });

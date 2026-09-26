@@ -21,7 +21,7 @@ export default function PrivacyPolicyScreen() {
       </View>
 
       <Text style={styles.paragraph}>
-        Doctor Connect ("we", "us") respects your privacy. This policy explains what information we
+        Doctor Connect (“we”, “us”) respects your privacy. This policy explains what information we
         collect through the app and how it is used.
       </Text>
 

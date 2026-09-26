@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.subtle,
     gap: 2,
+    ...theme.cardShadow,
   },
   patientName: {
     fontSize: theme.fontSize.base,

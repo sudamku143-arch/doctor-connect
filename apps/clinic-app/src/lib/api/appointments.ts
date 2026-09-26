@@ -35,7 +35,10 @@ export async function listClinicAppointments(
 
   const todayStr = new Date().toISOString().slice(0, 10);
   if (bucket === "today") {
-    query = query.eq("appointment_date", todayStr).order("appointment_time", { ascending: true });
+    // filters.date lets a caller ask for "today"'s bucket rules (all
+    // statuses, ordered by time) on a different day — e.g. yesterday, for
+    // a day-over-day comparison — without a separate bucket value.
+    query = query.eq("appointment_date", filters.date ?? todayStr).order("appointment_time", { ascending: true });
   } else if (bucket === "upcoming") {
     query = query
       .gt("appointment_date", todayStr)

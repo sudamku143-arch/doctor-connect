@@ -90,8 +90,8 @@ export default function PrescriptionUploadScreen() {
     >
       <Text style={styles.title}>Upload Prescription</Text>
       <Text style={styles.subtitle}>
-        Take a photo of, or pick, the handwritten/printed prescription. A "Doctor Connect" watermark is
-        added automatically before it's saved for the patient.
+        Take a photo of, or pick, the handwritten/printed prescription. A “Doctor Connect” watermark is
+        added automatically before it’s saved for the patient.
       </Text>
 
       {error ? <ErrorState title={error} /> : null}

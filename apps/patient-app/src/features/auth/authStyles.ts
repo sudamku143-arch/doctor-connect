@@ -31,6 +31,7 @@ export const authStyles = StyleSheet.create({
   },
   linkRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "center",
     gap: theme.spacing.xxs,
   },
@@ -41,12 +42,13 @@ export const authStyles = StyleSheet.create({
   link: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.link,
-    fontWeight: theme.fontWeight.semibold as any,
+    fontWeight: theme.fontWeight.bold as any,
   },
   forgotLink: {
     alignSelf: "flex-end",
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.link,
+    fontWeight: theme.fontWeight.bold as any,
   },
   legalText: {
     fontSize: theme.fontSize.xs,

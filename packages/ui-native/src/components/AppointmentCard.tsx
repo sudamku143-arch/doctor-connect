@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.subtle,
     gap: theme.spacing.xxs,
+    ...theme.cardShadow,
   },
   headerRow: {
     flexDirection: "row",

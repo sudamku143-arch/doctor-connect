@@ -10,8 +10,15 @@ export function todayDateString(): string {
   return toDateString(new Date());
 }
 
+// Local calendar date, not toISOString().slice(0, 10) — that converts
+// through UTC, which rolls back to the previous day for any timezone
+// ahead of UTC (IST included) whenever the local date is fed back in
+// here via a local-midnight Date, as addDays() below does.
 export function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function addDays(dateString: string, days: number): string {
@@ -44,7 +51,7 @@ export function buildDateStripItems(fromDateString: string, days: number): DateS
     const jsDate = new Date(`${date}T00:00:00`);
     return {
       date,
-      label: index === 0 ? "Today" : index === 1 ? "Tmrw" : WEEKDAY_SHORT[jsDate.getDay()] ?? "",
+      label: index === 0 ? "Today" : index === 1 ? "Tmrw" : "",
       dayOfWeek: WEEKDAY_SHORT[jsDate.getDay()] ?? "",
       dayNumber: String(jsDate.getDate()),
     };

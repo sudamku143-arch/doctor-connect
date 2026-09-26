@@ -255,6 +255,19 @@ export interface AuditLog {
   created_at: string;
 }
 
+// Mirrors 0013_activity_log.sql — a clinic-scoped, human-readable feed
+// (distinct from AuditLog's before/after compliance trail) that powers
+// the Clinic App dashboard's "Recent Activity" section.
+export interface ActivityLog {
+  id: string;
+  clinic_id: string;
+  type: "CHECK_IN" | "CONSULTATION_COMPLETE" | "NO_SHOW" | "CANCELLED" | "NEW_BOOKING";
+  message: string;
+  appointment_id: string | null;
+  actor_id: string | null;
+  created_at: string;
+}
+
 export interface Prescription {
   id: string;
   appointment_id: string;

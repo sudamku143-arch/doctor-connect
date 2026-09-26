@@ -35,3 +35,27 @@ export type SignupInput = z.infer<typeof signupSchema>;
 
 export const forgotPasswordSchema = z.object({ email });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+// Every field here is required, so the empty case always reads "This
+// field is required" (consistent across the form) — a distinct message
+// only kicks in once something's actually been typed but doesn't match
+// the expected format (email shape, 10-digit mobile, password length).
+export const registerClinicSchema = z.object({
+  clinicName: z.string().trim().min(1, "This field is required"),
+  fullName: z.string().trim().min(1, "This field is required"),
+  email: z.string().trim().min(1, "This field is required").email("Enter a valid email address"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "This field is required")
+    .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+  password: z
+    .string()
+    .min(1, "This field is required")
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Za-z]/, "Password must include a letter")
+    .regex(/[0-9]/, "Password must include a number"),
+  address: z.string().trim().min(1, "This field is required"),
+  city: z.string().trim().min(1, "This field is required"),
+});
+export type RegisterClinicInput = z.infer<typeof registerClinicSchema>;

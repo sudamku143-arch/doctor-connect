@@ -29,8 +29,8 @@ export default function TermsOfServiceScreen() {
 
       <Text style={styles.sectionTitle}>Appointments</Text>
       <Text style={styles.paragraph}>
-        Booking a slot confirms your appointment subject to the clinic's own policies. Cancellations and
-        reschedules are handled in the "My Appointments" tab; repeated no-shows may affect your ability to
+        Booking a slot confirms your appointment subject to the clinic’s own policies. Cancellations and
+        reschedules are handled in the “My Appointments” tab; repeated no-shows may affect your ability to
         book with a clinic in future.
       </Text>
 

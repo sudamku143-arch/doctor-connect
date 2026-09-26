@@ -1,6 +1,17 @@
 packages:
   - "apps/*"
   - "packages/*"
+overrides:
+  # expo-router pulls react-native-reanimated in transitively (via its
+  # drawer-navigation support, react-native-drawer-layout) at whatever the
+  # newest matching semver happens to be. Pinned here to the exact version
+  # `expo install` resolved as compatible with this project's Expo SDK, so
+  # it can't drift to a second, mismatched copy alongside the apps' own
+  # direct dependency — that duplication was the real cause of a runtime
+  # crash ("Cannot read property 'getUseOfValueInStyleWarning' of
+  # undefined") even though neither app actually renders a Drawer.
+  react-native-reanimated: 4.5.1
+  react-native-worklets: 0.10.1
 allowBuilds:
   esbuild: true
   unrs-resolver: true

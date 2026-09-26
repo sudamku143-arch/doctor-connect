@@ -32,6 +32,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.subtle,
     gap: 2,
+    ...theme.cardShadow,
   },
   cardEmphasis: {
     backgroundColor: theme.colors.primary[500],

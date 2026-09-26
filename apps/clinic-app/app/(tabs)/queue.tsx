@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import {
@@ -19,6 +21,7 @@ import { checkinAppointment, completeConsultation, listClinicAppointments, markN
 import { todayDateString } from "@/lib/format";
 
 export default function TodaysQueueScreen() {
+  const insets = useSafeAreaInsets();
   const { staff } = useClinic();
   const [doctors, setDoctors] = useState<ClinicDoctor[]>([]);
   const [selectedDoctorClinicId, setSelectedDoctorClinicId] = useState<string | null>(null);
@@ -133,7 +136,10 @@ export default function TodaysQueueScreen() {
   const completed = queue.filter((entry) => entry.status === "COMPLETED");
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.md }]}
+    >
       {doctors.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorRow}>
           {doctors.map((d) => (
@@ -165,7 +171,7 @@ export default function TodaysQueueScreen() {
             <Button label="Mark Completed" onPress={() => handleComplete(consulting.appointment_id)} disabled={busy} />
           </View>
         ) : (
-          <Text style={styles.mutedText}>No one is currently being consulted.</Text>
+          <EmptyRow icon="medkit-outline" text="No one is currently being consulted." />
         )}
         <PrimaryButton label="Call Next" onPress={handleCallNext} disabled={busy || !!consulting} />
       </View>
@@ -173,7 +179,7 @@ export default function TodaysQueueScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Waiting ({waiting.length})</Text>
         {waiting.length === 0 ? (
-          <Text style={styles.mutedText}>No patients waiting.</Text>
+          <EmptyRow icon="people-outline" text="No patients waiting." />
         ) : (
           waiting.map((entry) => (
             <View key={entry.id} style={styles.waitingRow}>
@@ -189,7 +195,7 @@ export default function TodaysQueueScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Awaiting Check-in</Text>
         {awaitingCheckIn.length === 0 ? (
-          <Text style={styles.mutedText}>No confirmed appointments waiting to check in.</Text>
+          <EmptyRow icon="enter-outline" text="No confirmed appointments waiting to check in." />
         ) : (
           awaitingCheckIn.map((appointment) => (
             <View key={appointment.id} style={styles.waitingRow}>
@@ -225,6 +231,15 @@ export default function TodaysQueueScreen() {
         onCancel={() => setConfirmNoShowId(null)}
       />
     </ScrollView>
+  );
+}
+
+function EmptyRow({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={styles.emptyRow}>
+      <Ionicons name={icon} size={18} color={theme.colors.text.tertiary} />
+      <Text style={styles.mutedText}>{text}</Text>
+    </View>
   );
 }
 
@@ -273,6 +288,14 @@ const styles = StyleSheet.create({
   mutedText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.tertiary,
+  },
+  emptyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface.subtle,
+    borderRadius: theme.radii.md,
   },
   waitingRow: {
     flexDirection: "row",

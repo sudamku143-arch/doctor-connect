@@ -8,9 +8,9 @@ import { PrimaryButton, StatusBadge } from "@doctor-connect/ui-native";
 // per-component coverage.
 
 describe("@doctor-connect/ui-native smoke test (via patient-app)", () => {
-  it("renders PrimaryButton's label and calls onPress when tapped", () => {
+  it("renders PrimaryButton's label and calls onPress when tapped", async () => {
     const onPress = jest.fn();
-    render(<PrimaryButton label="Book Appointment" onPress={onPress} />);
+    await render(<PrimaryButton label="Book Appointment" onPress={onPress} />);
 
     const button = screen.getByText("Book Appointment");
     expect(button).toBeTruthy();
@@ -19,8 +19,8 @@ describe("@doctor-connect/ui-native smoke test (via patient-app)", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("renders a StatusBadge with the expected label for a known status", () => {
-    render(<StatusBadge status="CONFIRMED" />);
+  it("renders a StatusBadge with the expected label for a known status", async () => {
+    await render(<StatusBadge status="CONFIRMED" />);
     expect(screen.getByText("Confirmed")).toBeTruthy();
   });
 });
