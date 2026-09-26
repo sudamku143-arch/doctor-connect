@@ -35,6 +35,11 @@ export const authStyles = StyleSheet.create({
     justifyContent: "center",
     gap: theme.spacing.xxs,
   },
+  // Single nested-<Text> sentence ("Already have an account? Log in") so it
+  // wraps as one line of prose instead of as separate flex items.
+  linkLine: {
+    textAlign: "center",
+  },
   linkText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,

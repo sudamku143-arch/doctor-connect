@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Link, router } from "expo-router";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { router } from "expo-router";
 import { signupSchema } from "@doctor-connect/validation";
 import { theme } from "@doctor-connect/theme";
 import { PrimaryButton, TextField } from "@doctor-connect/ui-native";
@@ -111,14 +111,12 @@ export default function SignupScreen() {
             <PrimaryButton label="Create account" onPress={handleSignup} loading={loading} />
           </View>
 
-          <View style={authStyles.linkRow}>
-            <Text style={authStyles.linkText}>Already have an account?</Text>
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
-                <Text style={authStyles.link}>Login</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
+          <Text style={authStyles.linkLine}>
+            <Text style={authStyles.linkText}>Already have an account? </Text>
+            <Text style={authStyles.link} onPress={() => router.push("/(auth)/login")}>
+              Log in
+            </Text>
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
