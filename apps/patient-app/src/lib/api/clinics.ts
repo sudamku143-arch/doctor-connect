@@ -80,3 +80,59 @@ export async function getAvailableCities(): Promise<string[]> {
   const cities = Array.from(new Set((data ?? []).map((row) => row.city).filter(Boolean)));
   return cities.sort();
 }
+
+export interface LocationMatch {
+  city: string;
+  /** The clinic address that matched an area/pincode query; null when the
+   * city name itself matched. */
+  area: string | null;
+}
+
+// Area/pincode lookup for the location picker. There's no separate
+// areas/pincodes table, so this searches the real clinic addresses (which
+// carry the locality and PIN) and cities, and returns which city each hit
+// belongs to — selecting it then filters by that city as usual.
+export async function searchLocations(query: string): Promise<LocationMatch[]> {
+  // Strip anything that would break PostgREST's or() filter syntax.
+  const q = query.replace(/[^\p{L}\p{N} -]/gu, "").trim();
+  if (q.length < 2) return [];
+  const { data, error } = await supabase
+    .from("clinics")
+    .select("city, address")
+    .eq("verification_status", "VERIFIED")
+    .or(`city.ilike.%${q}%,address.ilike.%${q}%`)
+    .limit(20);
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const matches: LocationMatch[] = [];
+  const cityMatches = q.toLowerCase();
+  for (const row of data ?? []) {
+    const area = row.city.toLowerCase().includes(cityMatches) ? null : row.address;
+    const key = `${row.city}|${area ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    matches.push({ city: row.city, area });
+  }
+  return matches;
+}
+
+export interface ClinicCoordinates {
+  city: string;
+  latitude: number;
+  longitude: number;
+}
+
+// Clinic coordinates for the "Use current location" fallback: when GPS
+// reverse-geocoding returns a locality name that isn't a city we serve
+// (e.g. a suburb), the nearest clinic's city is the next best answer.
+export async function listClinicCoordinates(): Promise<ClinicCoordinates[]> {
+  const { data, error } = await supabase
+    .from("clinics")
+    .select("city, latitude, longitude")
+    .eq("verification_status", "VERIFIED")
+    .not("latitude", "is", null)
+    .not("longitude", "is", null);
+  if (error) throw error;
+  return (data ?? []) as ClinicCoordinates[];
+}

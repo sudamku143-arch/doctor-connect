@@ -28,6 +28,12 @@
       "@react-native-community/datetimepicker",
       "expo-sharing",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Doctor Connect uses your location to show doctors and clinics in your city."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/android-icon-foreground.png",

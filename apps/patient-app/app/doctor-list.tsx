@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { theme } from "@doctor-connect/theme";
 import { DoctorCard, EmptyState, ErrorState, LoadingState } from "@doctor-connect/ui-native";
+import { useLocation } from "@/features/location/LocationContext";
 import { searchDoctors } from "@/lib/api/doctors";
 import type { DoctorListItem } from "@/lib/api/types";
 import { formatDateLabel, formatTimeLabel } from "@/lib/format";
@@ -11,16 +12,17 @@ import { formatDateLabel, formatTimeLabel } from "@/lib/format";
 export default function DoctorListScreen() {
   const insets = useSafeAreaInsets();
   const { specialtyId, specialtyName } = useLocalSearchParams<{ specialtyId: string; specialtyName?: string }>();
+  const { city } = useLocation();
   const [doctors, setDoctors] = useState<DoctorListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    searchDoctors({ specialtyId })
+    searchDoctors({ specialtyId, city })
       .then(setDoctors)
       .catch(() => setError("Something went wrong. Please try again."))
       .finally(() => setLoading(false));
-  }, [specialtyId]);
+  }, [specialtyId, city]);
 
   if (loading) return <LoadingState title="Loading doctors…" />;
   if (error) return <ErrorState title={error} />;
@@ -32,7 +34,10 @@ export default function DoctorListScreen() {
     >
       {specialtyName ? <Text style={styles.heading}>{specialtyName}</Text> : null}
       {doctors.length === 0 ? (
-        <EmptyState title="No doctors found." description="Check back soon as more doctors join this specialty." />
+        <EmptyState
+          title={city ? `No doctors found in ${city}.` : "No doctors found."}
+          description="Check back soon as more doctors join this specialty."
+        />
       ) : (
         doctors.map((item) => (
           <DoctorCard

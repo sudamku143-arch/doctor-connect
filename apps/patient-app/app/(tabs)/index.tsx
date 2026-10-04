@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +9,7 @@ import { theme } from "@doctor-connect/theme";
 import { AppointmentCard, ClinicCard, DoctorCard, DoctorCardSkeleton, ErrorState, SkeletonBlock } from "@doctor-connect/ui-native";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useLocation } from "@/features/location/LocationContext";
+import { LocationPickerSheet } from "@/features/location/LocationPickerSheet";
 import { listSpecialties, type SpecialtyWithCount } from "@/lib/api/specialties";
 import { listTopDoctors } from "@/lib/api/doctors";
 import { listNearbyClinicsWithSpecialties, type ClinicWithSpecialties } from "@/lib/api/clinics";
@@ -22,7 +23,7 @@ import { formatDateLabel, formatTimeLabel, getOpenStatusLabel } from "@/lib/form
 export default function HomeScreen() {
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
-  const { city, cities, setCity } = useLocation();
+  const { city, cities } = useLocation();
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [fullName, setFullName] = useState<string | null>(null);
   const firstName =
@@ -94,15 +95,24 @@ export default function HomeScreen() {
         style={[styles.headerGradient, { paddingTop: insets.top + theme.spacing.md }]}
       >
         <View style={styles.headerRow}>
-          <Pressable
-            style={styles.locationRow}
-            onPress={() => cities.length > 1 && setShowCityPicker(true)}
-            hitSlop={8}
-          >
-            <Ionicons name="location" size={14} color="#FFFFFF" />
-            <Text style={styles.location}>{city ?? "Select city"}</Text>
-            {cities.length > 1 ? <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.85)" /> : null}
-          </Pressable>
+          <View style={styles.locationBlock}>
+            <Text style={styles.locationLabel}>CURRENT LOCATION</Text>
+            <Pressable
+              style={({ pressed }) => [styles.locationChip, pressed && styles.locationChipPressed]}
+              onPress={() => setShowCityPicker(true)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`Current location ${city ?? "not set"}. Change location`}
+            >
+              <View style={styles.locationPin}>
+                <Ionicons name="location" size={13} color={theme.colors.primary[600]} />
+              </View>
+              <Text style={styles.location} numberOfLines={1}>
+                {city ?? "Select city"}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
           <View style={styles.headerActions}>
             <Pressable style={styles.iconButton} onPress={() => router.push("/(tabs)/notifications")} hitSlop={6}>
               <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
@@ -115,12 +125,9 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.greeting}>Hi{firstName ? `, ${firstName}` : ""} 👋</Text>
-        <View style={styles.subtitleRow}>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            Find your trusted doctor anytime{city ? `, ${city}` : ""}
-          </Text>
-          <Ionicons name="location" size={12} color="rgba(255,255,255,0.85)" />
-        </View>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          Find your trusted doctor anytime
+        </Text>
       </LinearGradient>
 
       <View style={styles.body}>
@@ -140,7 +147,7 @@ export default function HomeScreen() {
                 <View style={styles.specialtyIcon}>
                   <MaterialCommunityIcons name={getSpecialtyIcon(specialty.icon)} size={24} color={theme.colors.primary[600]} />
                 </View>
-                <Text style={styles.specialtyName} numberOfLines={2}>
+                <Text style={styles.specialtyName} numberOfLines={1}>
                   {specialty.name}
                 </Text>
               </Pressable>
@@ -149,7 +156,7 @@ export default function HomeScreen() {
               <View style={styles.specialtyIcon}>
                 <Ionicons name="arrow-forward" size={22} color={theme.colors.primary[600]} />
               </View>
-              <Text style={styles.specialtyName} numberOfLines={2}>
+              <Text style={styles.specialtyName} numberOfLines={1}>
                 See All
               </Text>
             </Pressable>
@@ -172,10 +179,12 @@ export default function HomeScreen() {
 
         <Section title="Top Doctors Near You" onViewAll={() => router.push("/(tabs)/search")}>
           {topDoctors.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No doctors to show yet</Text>
-              <Text style={styles.emptyDescription}>Verified doctors near you will appear here.</Text>
-            </View>
+            <CityEmptyCard
+              title={city ? `No doctors in ${city} yet` : "No doctors to show yet"}
+              notLaunched={!!city && !cities.includes(city)}
+              description="Verified doctors near you will appear here."
+              onChangeLocation={() => setShowCityPicker(true)}
+            />
           ) : (
             <View style={{ gap: theme.spacing.sm }}>
               {topDoctors.map((item) => (
@@ -207,10 +216,12 @@ export default function HomeScreen() {
 
         <Section title="Nearby Clinics" onViewAll={() => router.push("/clinics")}>
           {nearbyClinics.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No clinics to show yet</Text>
-              <Text style={styles.emptyDescription}>Nearby verified clinics will appear here.</Text>
-            </View>
+            <CityEmptyCard
+              title={city ? `No clinics in ${city} yet` : "No clinics to show yet"}
+              notLaunched={!!city && !cities.includes(city)}
+              description="Nearby verified clinics will appear here."
+              onChangeLocation={() => setShowCityPicker(true)}
+            />
           ) : (
             <View style={{ gap: theme.spacing.sm }}>
               {nearbyClinics.map((clinic) => (
@@ -229,29 +240,35 @@ export default function HomeScreen() {
         </Section>
       </View>
     </ScrollView>
-    <Modal visible={showCityPicker} transparent animationType="fade" onRequestClose={() => setShowCityPicker(false)}>
-      <Pressable style={styles.modalBackdrop} onPress={() => setShowCityPicker(false)}>
-        <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.modalTitle}>Choose your city</Text>
-          {cities.map((option) => (
-            <Pressable
-              key={option}
-              style={styles.cityOption}
-              onPress={() => {
-                setCity(option);
-                setShowCityPicker(false);
-              }}
-            >
-              <Text style={styles.cityOptionLabel}>{option}</Text>
-              {option === city ? (
-                <Ionicons name="checkmark" size={theme.iconSizes.md} color={theme.colors.primary[500]} />
-              ) : null}
-            </Pressable>
-          ))}
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <LocationPickerSheet visible={showCityPicker} onClose={() => setShowCityPicker(false)} />
     </>
+  );
+}
+
+function CityEmptyCard({
+  title,
+  description,
+  notLaunched,
+  onChangeLocation,
+}: {
+  title: string;
+  description: string;
+  notLaunched: boolean;
+  onChangeLocation: () => void;
+}) {
+  return (
+    <View style={styles.emptyCard}>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyDescription}>
+        {notLaunched ? "We’re launching city by city and aren’t here yet. Try another location." : description}
+      </Text>
+      {notLaunched ? (
+        <Pressable onPress={onChangeLocation} hitSlop={6} style={styles.emptyAction}>
+          <Ionicons name="location-outline" size={14} color={theme.colors.primary[600]} />
+          <Text style={styles.emptyActionLabel}>Change location</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -320,45 +337,47 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: theme.colors.primary[500],
   },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.xxs,
+  locationBlock: {
     flexShrink: 1,
+    gap: 4,
   },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(21, 21, 31, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalSheet: {
-    backgroundColor: theme.colors.surface.default,
-    borderTopLeftRadius: theme.radii.lg,
-    borderTopRightRadius: theme.radii.lg,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.xxs,
-  },
-  modalTitle: {
-    fontSize: theme.fontSize.md,
+  locationLabel: {
+    fontSize: 10,
     fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    letterSpacing: 1,
+    color: "rgba(255,255,255,0.72)",
+    marginLeft: 2,
   },
-  cityOption: {
+  // Translucent white pill so the location reads as a tappable control
+  // (Swiggy/Practo-style) rather than a static caption.
+  locationChip: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.subtle,
+    alignSelf: "flex-start",
+    gap: 6,
+    maxWidth: 220,
+    paddingLeft: 4,
+    paddingRight: 10,
+    paddingVertical: 4,
+    borderRadius: theme.radii.pill,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
   },
-  cityOptionLabel: {
-    fontSize: theme.fontSize.base,
-    color: theme.colors.text.primary,
+  locationChipPressed: {
+    backgroundColor: "rgba(255,255,255,0.28)",
+  },
+  locationPin: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
   location: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium as any,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold as any,
     color: "#FFFFFF",
     flexShrink: 1,
   },
@@ -368,16 +387,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginTop: theme.spacing.sm,
   },
-  subtitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2,
-  },
   subtitle: {
     fontSize: theme.fontSize.sm,
     color: "rgba(255,255,255,0.85)",
-    flexShrink: 1,
+    marginTop: 2,
   },
   searchBar: {
     flexDirection: "row",
@@ -425,8 +438,10 @@ const styles = StyleSheet.create({
   specialtyRow: {
     gap: theme.spacing.sm,
   },
+  // Sized to its one-line label (with a floor) instead of a fixed width, so
+  // long names like "Cardiologist" never get broken mid-word.
   specialtyCard: {
-    width: 92,
+    minWidth: 88,
     alignItems: "center",
     gap: theme.spacing.xxs,
     backgroundColor: theme.colors.surface.default,
@@ -434,7 +449,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.subtle,
     paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     shadowColor: "#000000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -451,9 +466,10 @@ const styles = StyleSheet.create({
   },
   specialtyName: {
     fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium as any,
     color: theme.colors.text.secondary,
     textAlign: "center",
-    lineHeight: 14,
+    lineHeight: 16,
   },
   emptyCard: {
     padding: theme.spacing.lg,
@@ -471,5 +487,17 @@ const styles = StyleSheet.create({
   emptyDescription: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
+  },
+  emptyAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: theme.spacing.xs,
+  },
+  emptyActionLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.primary[600],
   },
 });
